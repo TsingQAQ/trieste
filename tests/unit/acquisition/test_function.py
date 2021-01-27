@@ -33,15 +33,19 @@ from trieste.acquisition.function import (
     MCIndAcquisitionFunctionBuilder,
     NegativeLowerConfidenceBound,
     ProbabilityOfFeasibility,
+    HVProbabilityOfImprovement,
     SingleModelMCIndAcquisitionFunctionBuilder,
     expected_improvement,
     lower_confidence_bound,
     probability_of_feasibility,
+    hv_probability_of_improvement,
+    get_nadir_point
 )
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel
 from trieste.type import TensorType
 from trieste.utils.objectives import BRANIN_GLOBAL_MINIMUM, branin
+from trieste.utils.pareto import Pareto
 
 
 class _ArbitrarySingleBuilder(SingleModelAcquisitionBuilder):
@@ -330,6 +334,57 @@ def test_expected_constrained_improvement_min_feasibility_probability_bound_is_i
     x = tf.constant([[1.5]])
     npt.assert_allclose(eci(x), ei(x) * pof(x))
 
+
+@pytest.mark.parametrize('query_at, dataset, nadir_point', [(
+        tf.constant([[0.0, 0.0], [0.1, 0.1], [0.2, 0.2], [0.3, 0.3], [0.4, 0.4], [0.5, 0.5],
+                     [0.6, 0.6], [0.7, 0.7], [0.8, 0.8], [0.9, 0.9], [1.0, 1.0]]),
+        {'OBJECTIVE1': Dataset(tf.ones((8, 1)), tf.constant([[0.9575],
+                                                             [0.9649],
+                                                             [0.1576],
+                                                             [0.9706],
+                                                             [0.9572],
+                                                             [0.4854],
+                                                             [0.8003],
+                                                             [0.1419]])),
+         'OBJECTIVE2': Dataset(tf.ones((8, 1)), tf.constant([[0.4218],
+                                                             [0.9157],
+                                                             [0.7922],
+                                                             [0.9595],
+                                                             [0.6557],
+                                                             [0.0357],
+                                                             [0.8491],
+                                                             [0.9340]]))},
+        tf.constant([[0.7144, 1.5328667]]))
+])
+def test_hvprobability_of_improvement_builder_builds_hvprobability_of_improvement(
+        query_at: tf.Tensor, dataset: Mapping, nadir_point: tf.Tensor) -> None:
+    pareto = Pareto(dataset)
+    models = {'OBJECTIVE{}'.format(i): QuadraticWithUnitVariance() for i in range(len(dataset.keys()))}
+    builder = HVProbabilityOfImprovement()
+    acq_fn = builder.prepare_acquisition_function(dataset, models)
+    expected = hv_probability_of_improvement(models, query_at, pareto, nadir_point)
+    npt.assert_array_almost_equal(acq_fn(query_at), expected)
+
+
+@pytest.mark.parametrize('obj_num, pareto, at, expected, nadir', [
+    (2, Pareto({'OBJECTIVE': Dataset(tf.ones((1, 1)), tf.constant([[0.5, 0.5]]))}), tf.constant([[0.]]),
+     tf.constant([[1.5283500097854048]]), tf.constant([[2., 2.]])),
+    (5, Pareto({'OBJECTIVE': Dataset(tf.ones((1, 1)), tf.constant([[3.0] * 5]))}), tf.constant([[1.0, 1.0]]),
+     tf.constant([[27.629129665031567]]), tf.constant([[4.0] * 5]))
+])
+def test_hvprobability_of_improvement(obj_num, pareto, at, expected, nadir) -> None:
+    actual = hv_probability_of_improvement(
+        {'OBJECTIVES{}'.format(i): QuadraticWithUnitVariance() for i in range(obj_num)}, at, pareto, nadir)
+    npt.assert_array_almost_equal(actual, expected, decimal=5)
+
+
+@pytest.mark.parametrize('front, expected', [
+    (tf.constant([[0, 1], [1, 0.5]]), tf.constant([[2, 1.5]])),
+    (tf.constant([[0, 1], [0.6, 0.4], [0.7, 0.1]]), tf.constant([[1.16666666, 1.6]])),
+    (tf.constant([[0.5] * 10]), tf.constant([[0.5] * 10]))
+])
+def test_get_nadir_point(front, expected) -> None:
+    npt.assert_array_almost_equal(get_nadir_point(front), expected)
 
 @pytest.mark.parametrize("sample_size", [-5, -1])
 def test_independent_reparametrization_sampler_raises_for_negative_sample_size(

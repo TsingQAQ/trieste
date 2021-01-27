@@ -13,6 +13,7 @@
 # limitations under the License.
 from abc import ABC, abstractmethod
 from typing import Callable, Mapping, Union
+import numpy as np
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -21,6 +22,7 @@ from typing_extensions import final
 from ..data import Dataset
 from ..models import ProbabilisticModel
 from ..type import TensorType
+from ..utils.pareto import Pareto
 
 AcquisitionFunction = Callable[[TensorType], TensorType]
 """
@@ -370,6 +372,149 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         eta = tf.reduce_min(tf.boolean_mask(mean, is_feasible), axis=0)
 
         return lambda at: expected_improvement(objective_model, eta, at) * constraint_fn(at)
+
+
+class HVProbabilityOfImprovement(AcquisitionFunctionBuilder):
+    """
+    Builder for the :func:`hv_probability_of_improvement` acquisition function
+    """
+
+    def __init__(self, nadir_setting: Union[str, callable] = "default"):
+        """
+        :param nadir_setting the method of calculating the nadir point, either default or a callable
+        """
+        self._nadir_setting = nadir_setting
+
+    def __repr__(self) -> str:
+        return f"HVProbabilityOfImprovement({self._nadir_setting!r})"
+
+    @staticmethod
+    def _calculate_nadir(pareto: Pareto, nadir_setting="default"):
+        """
+        calculate the reference point for hypervolme calculation
+        :param pareto: Pareto class
+        :param nadir_setting
+        """
+        if nadir_setting == "default":
+            return get_nadir_point(pareto.front)
+        else:
+            assert callable(nadir_setting), ValueError(
+                "nadir_setting: {} do not understood".format(nadir_setting)
+            )
+            return nadir_setting(pareto.front)
+
+    def prepare_acquisition_function(
+        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+    ) -> AcquisitionFunction:
+        """
+        :param datasets: The data from the observer. Must be populated.
+        :param models: The model over the specified ``dataset``.
+        :return: The hv_probability_of_improvement function.
+        """
+
+        _PF = Pareto(datasets)
+        _nadir_pt = self._calculate_nadir(_PF, nadir_setting=self._nadir_setting)
+        return lambda at: self._acquisition_function(models, at, _PF, _nadir_pt)
+
+    @staticmethod
+    def _acquisition_function(
+        models: Mapping[str, ProbabilisticModel],
+        at: TensorType,
+        pareto: Pareto,
+        nadir: tf.Tensor,
+    ) -> tf.Tensor:
+        return hv_probability_of_improvement(models, at, pareto, nadir)
+
+
+def hv_probability_of_improvement(
+    models: Mapping[str, ProbabilisticModel],
+    at: TensorType,
+    pareto: Pareto,
+    nadir_point: tf.Tensor,
+) -> tf.Tensor:
+    """
+    defined in
+    :cite:`couckuyt2014fast` as
+
+    .. math::
+
+         P_{hv}[I] = I(\mu, \mathcal{P}) * P(I) ,
+
+    where :math:`I(\mu, \mathcal{P})` is the indicator function of hypervolme,
+    P(I) is the probability of improvement
+
+    The hypervolume based probability of improvement (HVPI) acquisition function for multi-objective global optimization.
+    @article{couckuyt2014fast,
+    title={Fast calculation of multiobjective probability of improvement and expected improvement criteria for Pareto optimization},
+    author={Couckuyt, Ivo and Deschrijver, Dirk and Dhaene, Tom},
+    journal={Journal of Global Optimization},
+    volume={60},
+    number={3},
+    pages={575--594},
+    year={2014},
+    publisher={Springer}
+    }
+
+    :param models: The model of the objective function.
+    :param at: The points at which to evaluate the probability of feasibility. Must have rank at least two
+    :param pareto: Pareto class
+    :param nadir_point The reference point for calculating hypervolume
+    :return: The hypervolume probability of improvement at ``at``.
+    """
+    predicts = [models[model_tag].predict(at) for model_tag in models]
+    candidate_mean, candidate_var = (tf.concat(moment, 1) for moment in zip(*predicts))
+    candidate_std = tf.clip_by_value(
+        tf.sqrt(candidate_var), 1.0e-8, candidate_mean.dtype.max
+    )
+    N = tf.shape(candidate_mean)[0]
+    outdim = tf.shape(candidate_mean)[1]
+    num_cells = tf.shape(pareto.bounds.lb)[0]
+    # pf_ext_size * outdim
+    pf_ext = tf.concat(
+        [
+            -np.inf * tf.ones([1, outdim], dtype=candidate_mean.dtype),
+            pareto.front,
+            nadir_point,
+        ],
+        0,
+    )
+
+    # Calculate the cdf's for all candidates for every predictive distribution in the data points
+    normal = tfp.distributions.Normal(candidate_mean, tf.sqrt(candidate_std))
+    Phi = tf.transpose(normal.cdf(tf.expand_dims(pf_ext[1:], 1)), [1, 0, 2])
+    Phi = tf.concat([tf.zeros(shape=(N, 1, outdim), dtype=Phi.dtype), Phi], axis=1)
+    col_idx = tf.tile(tf.range(outdim), (num_cells,))
+    ub_idx = tf.stack((tf.reshape(pareto.bounds.ub, [-1]), col_idx), axis=1)
+    lb_idx = tf.stack((tf.reshape(pareto.bounds.lb, [-1]), col_idx), axis=1)
+    P1 = tf.transpose(tf.gather_nd(tf.transpose(Phi, perm=[1, 2, 0]), ub_idx))
+    P2 = tf.transpose(tf.gather_nd(tf.transpose(Phi, perm=[1, 2, 0]), lb_idx))
+    P = tf.reshape(P1 - P2, [N, num_cells, outdim])
+    PoI = tf.reduce_sum(tf.reduce_prod(P, axis=2), axis=1, keepdims=True)
+
+    ub_points = tf.reshape(tf.gather_nd(pf_ext, ub_idx), [num_cells, outdim])
+    lb_points = tf.reshape(tf.gather_nd(pf_ext, lb_idx), [num_cells, outdim])
+    splus_valid = tf.reduce_all(
+        tf.tile(tf.expand_dims(ub_points, 1), [1, N, 1]) > candidate_mean, axis=2
+    )  # num_cells x N
+    splus_idx = tf.expand_dims(tf.cast(splus_valid, dtype=ub_points.dtype), -1)
+    splus_lb = tf.tile(tf.expand_dims(lb_points, 1), [1, N, 1])
+    splus_lb = tf.maximum(splus_lb, candidate_mean)
+    splus_ub = tf.tile(tf.expand_dims(ub_points, 1), [1, N, 1])
+    splus = tf.concat([splus_idx, splus_ub - splus_lb], axis=2)
+    Hv = tf.transpose(
+        tf.reduce_sum(tf.reduce_prod(splus, axis=2), axis=0, keepdims=True)
+    )
+    return tf.multiply(Hv, PoI)
+
+
+def get_nadir_point(front: tf.Tensor) -> tf.Tensor:
+    """
+    nadir point calculation method
+    """
+    f = tf.math.reduce_max(front, axis=0, keepdims=True) - tf.math.reduce_min(
+        front, axis=0, keepdims=True
+    )
+    return tf.math.reduce_max(front, axis=0, keepdims=True) + 2 * f / front.shape[0]
 
 
 class IndependentReparametrizationSampler:

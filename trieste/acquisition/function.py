@@ -13,7 +13,7 @@
 # limitations under the License.
 from abc import ABC, abstractmethod
 from typing import Callable, Mapping, Union
-import numpy as np
+from math import inf
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -432,20 +432,22 @@ def hv_probability_of_improvement(
     pareto: Pareto,
     nadir_point: tf.Tensor,
 ) -> tf.Tensor:
-    """
+    r"""
     defined in
     :cite:`couckuyt2014fast` as
 
     .. math::
 
-         P_{hv}[I] = I(\mu, \mathcal{P}) * P(I) ,
+         P_{hv}[I] = I(mu, \mathcal{P}) * P(I) ,
 
-    where :math:`I(\mu, \mathcal{P})` is the indicator function of hypervolme,
+    where :math:`I(mu, \mathcal{P})` is the indicator function of hypervolme,
     P(I) is the probability of improvement
 
-    The hypervolume based probability of improvement (HVPI) acquisition function for multi-objective global optimization.
+    The hypervolume based probability of improvement (HVPI) acquisition function for
+    multi-objective global optimization.
     @article{couckuyt2014fast,
-    title={Fast calculation of multiobjective probability of improvement and expected improvement criteria for Pareto optimization},
+    title={Fast calculation of multiobjective probability of improvement and expected improvement
+     criteria for Pareto optimization},
     author={Couckuyt, Ivo and Deschrijver, Dirk and Dhaene, Tom},
     journal={Journal of Global Optimization},
     volume={60},
@@ -456,23 +458,22 @@ def hv_probability_of_improvement(
     }
 
     :param models: The model of the objective function.
-    :param at: The points at which to evaluate the probability of feasibility. Must have rank at least two
+    :param at: The points at which to evaluate the probability of feasibility.
+                Must have rank at least two
     :param pareto: Pareto class
     :param nadir_point The reference point for calculating hypervolume
     :return: The hypervolume probability of improvement at ``at``.
     """
     predicts = [models[model_tag].predict(at) for model_tag in models]
     candidate_mean, candidate_var = (tf.concat(moment, 1) for moment in zip(*predicts))
-    candidate_std = tf.clip_by_value(
-        tf.sqrt(candidate_var), 1.0e-8, candidate_mean.dtype.max
-    )
+    candidate_std = tf.clip_by_value(tf.sqrt(candidate_var), 1.0e-8, candidate_mean.dtype.max)
     N = tf.shape(candidate_mean)[0]
     outdim = tf.shape(candidate_mean)[1]
     num_cells = tf.shape(pareto.bounds.lb)[0]
     # pf_ext_size * outdim
     pf_ext = tf.concat(
         [
-            -np.inf * tf.ones([1, outdim], dtype=candidate_mean.dtype),
+            -inf * tf.ones([1, outdim], dtype=candidate_mean.dtype),
             pareto.front,
             nadir_point,
         ],
@@ -501,9 +502,7 @@ def hv_probability_of_improvement(
     splus_lb = tf.maximum(splus_lb, candidate_mean)
     splus_ub = tf.tile(tf.expand_dims(ub_points, 1), [1, N, 1])
     splus = tf.concat([splus_idx, splus_ub - splus_lb], axis=2)
-    Hv = tf.transpose(
-        tf.reduce_sum(tf.reduce_prod(splus, axis=2), axis=0, keepdims=True)
-    )
+    Hv = tf.transpose(tf.reduce_sum(tf.reduce_prod(splus, axis=2), axis=0, keepdims=True))
     return tf.multiply(Hv, PoI)
 
 

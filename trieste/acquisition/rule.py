@@ -80,6 +80,7 @@ class AcquisitionRule(ABC, Generic[S, SP]):
 
 
 OBJECTIVE: Final[str] = "OBJECTIVE"
+CONSTRAINT: Final[str] = "CONSTRAINT"
 """
 A tag typically used by acquisition rules to denote the data sets and models corresponding to the
 optimization objective.

@@ -648,7 +648,8 @@ class BatchReparametrizationSampler:
             )
 
         mean, cov = self._model.predict_joint(at)  # [..., B, L], [..., L, B, B]
-
+        tf.print('AT')
+        tf.print(at)
         if not eps_is_populated:
             self._eps.assign(
                 tf.random.normal(
@@ -657,6 +658,9 @@ class BatchReparametrizationSampler:
             )
 
         identity = tf.eye(batch_size, dtype=cov.dtype)  # [B, B]
+
+        tf.print('COV')
+        tf.print(cov)
         cov_cholesky = tf.linalg.cholesky(cov + jitter * identity)  # [..., L, B, B]
 
         variance_contribution = cov_cholesky @ tf.cast(self._eps, cov.dtype)  # [..., L, B, S]

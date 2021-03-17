@@ -1,10 +1,10 @@
 import tensorflow as tf
 from itertools import combinations
 from typing import Union, Mapping
-from ...utils.pareto import Pareto
+from trieste.utils.pareto import Pareto
 from .function import HypervolumeBatchAcquisitionBuilder, get_nadir_point, \
     ConstraintHypervolumeBatchAcquisitionBuilder
-from ..function import DEFAULTS, Dataset, ProbabilisticModel, \
+from trieste.acquisition.function import DEFAULTS, Dataset, ProbabilisticModel, \
     AcquisitionFunction, TensorType, BatchReparametrizationSampler, BatchAcquisitionFunction
 from trieste.acquisition.rule import OBJECTIVE, CONSTRAINT
 

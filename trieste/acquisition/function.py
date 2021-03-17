@@ -11,17 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Callable, Mapping, Union
+from collections.abc import Mapping
+from itertools import product
+from math import inf
+from typing import Callable
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from scipy.optimize import bisect
 from typing_extensions import final
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
+from ..space import SearchSpace
 from ..type import TensorType
 from ..utils import DEFAULTS
+from ..utils.pareto import Pareto
 
 AcquisitionFunction = Callable[[TensorType], TensorType]
 """
@@ -121,7 +129,6 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         """
         if len(dataset.query_points) == 0:
             raise ValueError("Dataset must be populated.")
-
         mean, _ = model.predict(dataset.query_points)
         eta = tf.reduce_min(mean, axis=0)
         return lambda at: self._acquisition_function(model, eta, at)
@@ -152,6 +159,129 @@ def expected_improvement(model: ProbabilisticModel, eta: TensorType, at: TensorT
     mean, variance = model.predict(at)
     normal = tfp.distributions.Normal(mean, tf.sqrt(variance))
     return (eta - mean) * normal.cdf(eta) + variance * normal.prob(eta)
+
+
+class MinValueEntropySearch(SingleModelAcquisitionBuilder):
+    """
+    Builder for the min-value entropy search acquisition function (an adapted
+    version of max-value entropy search suitiable for function minimisation tasks).
+    """
+
+    def __init__(self, search_space: SearchSpace, num_samples: int = 10, grid_size: int = 5000):
+        """
+        :param search_space: The global search space over which the optimisation is defined.
+        :param num_samples: Number of sample draws of the minimal value.
+        :param grid_size: Size of random grid used to fit the gumbel distribution
+            (recommend scaling with search space dimension).
+        """
+        self._search_space = search_space
+
+        if num_samples <= 0:
+            raise ValueError(f"num_samples must be positive, got {num_samples}")
+        self._num_samples = num_samples
+
+        if grid_size <= 0:
+            raise ValueError(f"grid_size must be positive, got {grid_size}")
+        self._grid_size = grid_size
+
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        Need to sample  a set of min-values y* from our posterior.
+        To do this we implement a Gumbel sampler, where we approximate
+        :math:`Pr(y*<y) by Gumbel(a,b)`.
+
+        The Gumbel distribution for minima has a cumulative density function
+        of :math:`f(y)= 1 - exp(-exp((y - a) / b))`, i.e. the q :sup:`th` quantile is given by
+        Q(q) = a + b * log( -1 * log(1 - q)). We choose values for a and b that
+        match the Gumbel's interquartile range with that of the observed
+        empirical cumulative density function of Pr(y*<y).
+
+        We then sample this Gumbel distribution by sampling from a uniform random variable
+        and applying the inverse probability integral transform, i.e. given a sample
+        r ~ Unif[0,1] then g = a + b * log( -1 * log(1 - r)) follows g ~ Gumbel(a,b).
+
+
+        :param dataset: The data from the observer.
+        :param model: The model over the specified ``dataset``.
+        :return: The MES function.
+        """
+        if len(dataset.query_points) == 0:
+            raise ValueError("Dataset must be populated.")
+
+        query_points = self._search_space.sample(num_samples=self._grid_size)
+        query_points = tf.concat([dataset.query_points, query_points], 0)
+        fmean, fvar = model.predict(query_points)
+        fsd = tf.math.sqrt(fvar)
+
+        def probf(y: tf.Tensor) -> tf.Tensor:  # Build empirical CDF for Pr(y*^hat<y)
+            unit_normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+            log_cdf = unit_normal.log_cdf(-(y - fmean) / fsd)
+            return 1 - tf.exp(tf.reduce_sum(log_cdf, axis=0))
+
+        left = tf.reduce_min(fmean - 5 * fsd)
+        right = tf.reduce_max(fmean + 5 * fsd)
+
+        def binary_search(val: float) -> float:  # Find empirical interquartile range
+            return bisect(lambda y: probf(y) - val, left, right, maxiter=10000)
+
+        q1, q2 = map(binary_search, [0.25, 0.75])
+
+        log = tf.math.log
+        l1 = log(log(4.0 / 3.0))
+        l2 = log(log(4.0))
+        b = (q1 - q2) / (l1 - l2)
+        a = (q2 * l1 - q1 * l2) / (l1 - l2)
+
+        uniform_samples = tf.random.uniform([self._num_samples], dtype=fmean.dtype)
+        gumbel_samples = log(-log(1 - uniform_samples)) * tf.cast(b, fmean.dtype) + tf.cast(
+            a, fmean.dtype
+        )
+
+        return lambda at: self._acquisition_function(model, gumbel_samples, at)
+
+    @staticmethod
+    def _acquisition_function(
+        model: ProbabilisticModel, samples: TensorType, at: TensorType
+    ) -> TensorType:
+        return min_value_entropy_search(model, samples, at)
+
+
+def min_value_entropy_search(
+    model: ProbabilisticModel, samples: TensorType, at: TensorType
+) -> TensorType:
+    r"""
+    Computes the information gain, i.e the change in entropy of p_min (the distribution of the
+    minimal value of the objective function) if we would evaluate x.
+
+    See :cite:`wang2017max` for details.
+
+    :param model: The model of the objective function.
+    :param samples: Samples from p_min
+    :param at: The points for which to calculate the expected improvement.
+    :return: The entropy reduction provided by an evaluation of ``at``.
+    """
+
+    tf.debugging.assert_rank(samples, 1)
+
+    if len(samples) == 0:
+        raise ValueError("Gumbel samples must be populated.")
+
+    fmean, fvar = model.predict(at)
+    fsd = tf.math.sqrt(fvar)
+    fsd = tf.clip_by_value(
+        fsd, 1.0e-8, fmean.dtype.max
+    )  # clip below to improve numerical stability
+
+    normal = tfp.distributions.Normal(tf.cast(0, fmean.dtype), tf.cast(1, fmean.dtype))
+    gamma = (samples - fmean) / fsd
+
+    minus_cdf = 1 - normal.cdf(gamma)
+    minus_cdf = tf.clip_by_value(minus_cdf, 1.0e-8, 1)  # clip below to improve numerical stability
+    f_acqu_x = -gamma * normal.prob(gamma) / (2 * minus_cdf) - tf.math.log(minus_cdf)
+
+    return tf.math.reduce_mean(f_acqu_x, axis=1, keepdims=True)
 
 
 class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
@@ -239,7 +369,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
     constraint function. See also :cite:`schonlau1998global` for details.
     """
 
-    def __init__(self, threshold: Union[float, TensorType]):
+    def __init__(self, threshold: float | TensorType):
         """
         :param threshold: The (scalar) probability of feasibility threshold.
         :raise ValueError (or InvalidArgumentError): If ``threshold`` is not a scalar.
@@ -255,7 +385,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         return f"ProbabilityOfFeasibility({self._threshold!r})"
 
     @property
-    def threshold(self) -> Union[float, TensorType]:
+    def threshold(self) -> float | TensorType:
         """ The probability of feasibility threshold. """
         return self._threshold
 
@@ -271,13 +401,13 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
 
     @staticmethod
     def _acquisition_function(
-        model: ProbabilisticModel, threshold: Union[float, TensorType], at: TensorType
+        model: ProbabilisticModel, threshold: float | TensorType, at: TensorType
     ) -> TensorType:
         return probability_of_feasibility(model, threshold, at)
 
 
 def probability_of_feasibility(
-    model: ProbabilisticModel, threshold: Union[float, TensorType], at: TensorType
+    model: ProbabilisticModel, threshold: float | TensorType, at: TensorType
 ) -> TensorType:
     r"""
     The probability of feasibility acquisition function defined in :cite:`gardner14` as
@@ -317,7 +447,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         self,
         objective_tag: str,
         constraint_builder: AcquisitionFunctionBuilder,
-        min_feasibility_probability: Union[float, TensorType] = 0.5,
+        min_feasibility_probability: float | TensorType = 0.5,
     ):
         """
         :param objective_tag: The tag for the objective data and model.
@@ -376,6 +506,141 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         eta = tf.reduce_min(tf.boolean_mask(mean, is_feasible), axis=0)
 
         return lambda at: expected_improvement(objective_model, eta, at) * constraint_fn(at)
+
+
+class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
+    """
+    Builder for the :func:`hv_probability_of_improvement` acquisition function
+    refer yang2019efficient
+    """
+
+    def __repr__(self) -> str:
+        return "ExpectedHypervolumeImprovement()"
+
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer. Must be populated.
+        :param model: The model over the specified ``dataset``.
+        :return: The expecyed_hv_of_improvement function.
+        """
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        mean, _ = model.predict(dataset.query_points)
+
+        _pf = Pareto(mean)
+        _reference_pt = get_reference_point(_pf.front)
+        return lambda at: self._acquisition_function(model, at, _pf, _reference_pt)
+
+    @staticmethod
+    def _acquisition_function(
+        model: ProbabilisticModel,
+        at: TensorType,
+        pareto: Pareto,
+        ref_pt: TensorType,
+    ) -> tf.Tensor:
+        return expected_hv_improvement(model, at, pareto, ref_pt)
+
+
+def expected_hv_improvement(
+    model: ProbabilisticModel,
+    at: TensorType,
+    pareto: Pareto,
+    reference_point: TensorType,
+) -> TensorType:
+    r"""
+    HV calculation using Eq. 44 of yang2019efficient paper
+    Note:
+    1. Since in Trieste we do not assume the use of a certain non-dominated partition algorithm.
+       we do not assume the last dimension partition has only one (lower) bound (which is used
+       in the yang2019efficient paper), this is not equally efficient as the original paper, but
+       is applicable to different non-dominated partition algorithm
+    2. The Psi and nu function in the original paper is defined for a maximization problem, to
+       make use of the same notation for easier reading, we inverse our problem (as maximization)
+       to make use of the same equation
+    3. The calculation of EHVI based on Eq.44 is independent on the order of each cell
+
+    :param model: The model of the objective function.
+    :param at: The points at which to evaluate the probability of feasibility.
+                Must have rank at least two
+    :param pareto: Pareto class
+    :param reference_point The reference point for calculating hypervolume
+    :return: The hypervolume expected improvement at ``at``.
+    """
+
+    normal = tfp.distributions.Normal(
+        loc=tf.zeros(shape=1, dtype=at.dtype), scale=tf.ones(shape=1, dtype=at.dtype)
+    )
+
+    def Psi(a, b, mean, std) -> TensorType:
+        """
+        Generic Expected Improvement o reference a, defined at Eq. 19 of [yang2019]
+        param: a: [num_cells, out_dim] lower bounds
+        param: b: [num_cells, out_dim] upper bounds
+        param: mean: [..., out_dim]
+        param: var: [..., out_dim]
+        """
+        return std * normal.prob((b - mean) / std) + (mean - a) * (1 - normal.cdf((b - mean) / std))
+
+    def nu(lb, ub, mean, std) -> TensorType:
+        """
+        Eq. 25 of [yang2019]
+        Note: as we deal with minimization, we use negative version of our problem
+         to make use of the original formula
+        """
+        return (ub - lb) * (1 - normal.cdf((ub - mean) / std))
+
+    candidate_mean, candidate_var = model.predict(at)
+    candidate_std = tf.sqrt(candidate_var)
+
+    # calc ehvi assuming maximization
+    neg_candidate_mean = -tf.expand_dims(candidate_mean, 1)  # [..., 1, out_dim]
+    candidate_std = tf.expand_dims(candidate_std, 1)  # [..., 1, out_dim]
+
+    lb_points, ub_points = pareto.get_hyper_cell_bounds(
+        tf.constant([-inf] * candidate_mean.shape[-1], dtype=at.dtype), reference_point
+    )
+
+    neg_lb_points, neg_ub_points = -ub_points, -lb_points  # ref Note. 3
+
+    neg_ub_points = tf.minimum(neg_ub_points, 1e10)  # this maximum: 1e10 is heuristically chosen
+
+    psi_ub = Psi(
+        neg_lb_points, neg_ub_points, neg_candidate_mean, candidate_std
+    )  # [..., num_cells, out_dim]
+    psi_lb = Psi(
+        neg_lb_points, neg_lb_points, neg_candidate_mean, candidate_std
+    )  # [..., num_cells, out_dim]
+
+    psi_lb2ub = tf.maximum(psi_lb - psi_ub, 0.0)  # [..., num_cells, out_dim]
+    nu_contrib = nu(neg_lb_points, neg_ub_points, neg_candidate_mean, candidate_std)
+
+    # get stacked factors of Eq. 45
+    # [2^m, dim_indices]
+    cross_index = tf.constant(list(product(*[[0, 1] for _ in range(reference_point.shape[-1])])))
+
+    # Take the cross product of psi_diff and nu across all outcomes
+    # [..., num_cells, 2(operation_num, refer Eq. 45), num_obj]
+    stacked_factors = tf.concat(
+        [tf.expand_dims(psi_lb2ub, -2), tf.expand_dims(nu_contrib, -2)], axis=-2
+    )
+
+    # [..., num_cells, 2^m, 2(operation_num), num_obj]
+    factor_combinations = tf.linalg.diag_part(tf.gather(stacked_factors, cross_index, axis=-2))
+
+    # calculate Eq. 44
+    # prod of different output_dim -> sum over 2^m combination -> sum over num_cells; [..., 1]
+    return tf.reduce_sum(
+        tf.reduce_sum(tf.reduce_prod(factor_combinations, axis=-1), axis=-1), axis=-1, keepdims=True
+    )
+
+
+def get_reference_point(front: TensorType) -> TensorType:
+    """
+    reference point calculation method
+    """
+    f = tf.math.reduce_max(front, axis=0) - tf.math.reduce_min(front, axis=0)
+    return tf.math.reduce_max(front, axis=0) + 2 * f / front.shape[0]
 
 
 class IndependentReparametrizationSampler:
@@ -648,8 +913,7 @@ class BatchReparametrizationSampler:
             )
 
         mean, cov = self._model.predict_joint(at)  # [..., B, L], [..., L, B, B]
-        tf.print('AT')
-        tf.print(at)
+
         if not eps_is_populated:
             self._eps.assign(
                 tf.random.normal(
@@ -658,9 +922,6 @@ class BatchReparametrizationSampler:
             )
 
         identity = tf.eye(batch_size, dtype=cov.dtype)  # [B, B]
-
-        tf.print('COV')
-        tf.print(cov)
         cov_cholesky = tf.linalg.cholesky(cov + jitter * identity)  # [..., L, B, B]
 
         variance_contribution = cov_cholesky @ tf.cast(self._eps, cov.dtype)  # [..., L, B, S]

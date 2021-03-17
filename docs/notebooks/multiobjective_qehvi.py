@@ -9,17 +9,13 @@ import tensorflow as tf
 from tensorflow import cos, sin, sqrt
 from math import pi
 import matplotlib.pyplot as plt
-from functools import partial
 from trieste.type import TensorType
 from trieste.data import Dataset
 from trieste.models import create_model
 
 from trieste.acquisition.rule import OBJECTIVE, CONSTRAINT
 from trieste.models.model_interfaces import ModelStack
-from trieste.acquisition.multiobjective.qEHVI import BatchMonteCarloHypervolumeExpectedImprovement, \
-    BatchMonteCarloConstraintHypervolumeExpectedImprovement
-
-from util.plotting import plot_function_2d, plot_bo_points
+from trieste.acquisition.qCEHVI import BatchMonteCarloConstraintHypervolumeExpectedImprovement
 
 np.random.seed(1793)
 tf.random.set_seed(1793)

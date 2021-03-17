@@ -24,7 +24,7 @@ from tests.util.misc import (
     random_seed,
 )
 from tests.util.model import QuadraticMeanAndRBFKernel, LinearMeanAndRBFKernel
-from trieste.acquisition.multiobjective.qEHVI import BatchMonteCarloHypervolumeExpectedImprovement
+from trieste.acquisition.qCEHVI import BatchMonteCarloHypervolumeExpectedImprovement
 from trieste.acquisition.multiobjective.analytic import expected_hv_improvement
 
 from trieste.data import Dataset

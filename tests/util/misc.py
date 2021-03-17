@@ -11,22 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import functools
-from typing import (
-    Any,
-    Callable,
-    Container,
-    FrozenSet,
-    List,
-    Mapping,
-    NoReturn,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-    cast,
-)
+from collections.abc import Callable, Container, Mapping
+from typing import Any, List, NoReturn, Tuple, TypeVar, Union, cast
 
 import numpy.testing as npt
 import tensorflow as tf
@@ -39,11 +28,11 @@ from trieste.space import Box, SearchSpace
 from trieste.type import TensorType
 from trieste.utils import shapes_equal
 
-TF_DEBUGGING_ERROR_TYPES: Final[Tuple[Type[Exception], ...]] = (
+TF_DEBUGGING_ERROR_TYPES: Final[tuple[type[Exception], ...]] = (
     ValueError,
     tf.errors.InvalidArgumentError,
 )
-""" Error types thrown by TensorFlow's debugging functionality. """
+""" Error types thrown by TensorFlow's debugging functionality for tensor shapes. """
 
 C = TypeVar("C", bound=Callable)
 """ Type variable bound to `typing.Callable`. """
@@ -127,19 +116,6 @@ def quadratic(x: tf.Tensor) -> tf.Tensor:
     return tf.reduce_sum(x ** 2, axis=-1, keepdims=True)
 
 
-def linear(x: tf.Tensor) -> tf.Tensor:
-    r"""
-    The multi-dimensional quadratic function.
-
-    :param x: A tensor whose last dimension is of length greater than zero.
-    :return: The sum :math:`\Sigma x^2` of the squares of ``x``.
-    :raise ValueError: If ``x`` is a scalar or has empty trailing dimension.
-    """
-    if x.shape == [] or x.shape[-1] == 0:
-        raise ValueError(f"x must have non-empty trailing dimension, got shape {x.shape}")
-
-    return tf.reduce_sum(x, axis=-1, keepdims=True)
-
 class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
     """ An acquisition rule that returns the same fixed value on every step. """
 
@@ -158,7 +134,7 @@ class FixedAcquisitionRule(AcquisitionRule[None, SearchSpace]):
         datasets: Mapping[str, Dataset],
         models: Mapping[str, ProbabilisticModel],
         state: None = None,
-    ) -> Tuple[TensorType, None]:
+    ) -> tuple[TensorType, None]:
         """
         :param search_space: Unused.
         :param datasets: Unused.
@@ -173,7 +149,7 @@ ShapeLike = Union[tf.TensorShape, Tuple[int, ...], List[int]]
 """ Type alias for types that can represent tensor shapes. """
 
 
-def various_shapes(*, excluding_ranks: Container[int] = ()) -> FrozenSet[Tuple[int, ...]]:
+def various_shapes(*, excluding_ranks: Container[int] = ()) -> frozenset[tuple[int, ...]]:
     """
     :param excluding_ranks: Ranks to exclude from the result.
     :return: A reasonably comprehensive variety of tensor shapes, where no shapes will have a rank

@@ -102,14 +102,17 @@ class ModelStack(TrainableProbabilisticModel):
 
     **Note:** Only supports vector outputs (i.e. with event shape [E]). Outputs for any two models
     are assumed independent. Each model may itself be single- or multi-output, and any one
-    multi-output model may have dependence between its outputs.
-
+    multi-output model may have dependence between its outputs. When we speak of *event size* in
+    this class, we mean the output dimension for a given :class:`TrainableProbabilisticModel`,
+    whether that is the :class:`ModelStack` itself, or one of the subsidiary
+    :class:`TrainableProbabilisticModel`\ s within the :class:`ModelStack`. Of course, the event
+    size for a :class:`ModelStack` will be the sum of the event sizes of each subsidiary model.
     """
 
     def __init__(
         self,
-        model_with_event_size: Tuple[TrainableProbabilisticModel, int],
-        *models_with_event_sizes: Tuple[TrainableProbabilisticModel, int],
+        model_with_event_size: tuple[TrainableProbabilisticModel, int],
+        *models_with_event_sizes: tuple[TrainableProbabilisticModel, int],
     ):
         r"""
         The order of individual models specified at :meth:`__init__` determines the order of the
@@ -123,8 +126,7 @@ class ModelStack(TrainableProbabilisticModel):
         super().__init__()
         self._models, self._event_sizes = zip(*(model_with_event_size,) + models_with_event_sizes)
 
-
-    def predict(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
         :param query_points: The points at which to make predictions, of shape [..., D].
         :return: The predictions from all the wrapped models, concatenated along the event axis in
@@ -135,8 +137,7 @@ class ModelStack(TrainableProbabilisticModel):
         means, vars_ = zip(*[model.predict(query_points) for model in self._models])
         return tf.concat(means, axis=-1), tf.concat(vars_, axis=-1)
 
-
-    def predict_joint(self, query_points: TensorType) -> Tuple[TensorType, TensorType]:
+    def predict_joint(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
         :param query_points: The points at which to make predictions, of shape [..., B, D].
         :return: The predictions from all the wrapped models, concatenated along the event axis in

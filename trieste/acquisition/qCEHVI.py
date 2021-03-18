@@ -2,14 +2,14 @@ import tensorflow as tf
 from itertools import combinations
 from typing import Union, Mapping
 from trieste.utils.pareto import Pareto
-from .function import HypervolumeBatchAcquisitionBuilder, get_nadir_point, \
-    ConstraintHypervolumeBatchAcquisitionBuilder
+from .function import get_reference_point, SingleModelBatchAcquisitionBuilder, BatchAcquisitionFunctionBuilder
 from trieste.acquisition.function import DEFAULTS, Dataset, ProbabilisticModel, \
     AcquisitionFunction, TensorType, BatchReparametrizationSampler, BatchAcquisitionFunction
 from trieste.acquisition.rule import OBJECTIVE, CONSTRAINT
+from math import inf
 
 
-class BatchMonteCarloHypervolumeExpectedImprovement(HypervolumeBatchAcquisitionBuilder):
+class BatchMonteCarloHypervolumeExpectedImprovement(SingleModelBatchAcquisitionBuilder):
     """
     Use of the inclusion-exclusion method
     refer
@@ -47,7 +47,7 @@ class BatchMonteCarloHypervolumeExpectedImprovement(HypervolumeBatchAcquisitionB
         :param nadir_setting
         """
         if nadir_setting == "default":
-            return get_nadir_point(pareto.front)
+            return get_reference_point(pareto.front)
         else:
             assert callable(nadir_setting), ValueError(
                 "nadir_setting: {} do not understood".format(nadir_setting)
@@ -142,13 +142,13 @@ class BatchMonteCarloHypervolumeExpectedImprovement(HypervolumeBatchAcquisitionB
         return batch_hvei
 
 
-class BatchMonteCarloConstraintHypervolumeExpectedImprovement(ConstraintHypervolumeBatchAcquisitionBuilder):
+# TODO: Only use this one
+class BatchMonteCarloConstraintHypervolumeExpectedImprovement(BatchAcquisitionFunctionBuilder):
     """
     The qEHVI considering constraint case, mainly refer sec 3.4 and A.3
     """
 
-    def __init__(self, sample_size: int = 512, *, jitter: float = DEFAULTS.JITTER,
-                 nadir_setting: Union[str, callable] = "default", eta: float = 1e-3):
+    def __init__(self, sample_size: int = 512, *, jitter: float = DEFAULTS.JITTER, eta: float = 1e-3):
         """
         :param sample_size: The number of samples for each batch of points.
         :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
@@ -166,22 +166,7 @@ class BatchMonteCarloConstraintHypervolumeExpectedImprovement(ConstraintHypervol
         self._sample_size = sample_size
         self._jitter = jitter
         self.q = -1
-        self._nadir_setting = nadir_setting
         self.eta = eta
-
-    def _calculate_nadir(self, pareto: Pareto, nadir_setting="default"):
-        """
-        calculate the reference point for hypervolme calculation
-        :param pareto: Pareto class
-        :param nadir_setting
-        """
-        if nadir_setting == "default":
-            return get_nadir_point(pareto.front)
-        else:
-            assert callable(nadir_setting), ValueError(
-                "nadir_setting: {} do not understood".format(nadir_setting)
-            )
-            return nadir_setting(pareto.front)
 
     def _cache_q_subset_indices(self, q: int) -> None:
         r"""Cache indices corresponding to all subsets of `q`.
@@ -220,11 +205,12 @@ class BatchMonteCarloConstraintHypervolumeExpectedImprovement(ConstraintHypervol
         con_model = models[CONSTRAINT]
         obj_means, _ = obj_model.predict(datasets[OBJECTIVE].query_points)  # [..., num_obj]
         con_means, _ = con_model.predict(datasets[CONSTRAINT].query_points)  # [..., num_con]
-        fea_idx = tf.squeeze(tf.where(tf.reduce_all(con_means > 0, axis=-1)))  # [...]
+        fea_idx = tf.squeeze(tf.where(tf.reduce_all(con_means < 0, axis=-1)))  # [...] <0 denotes feasible
         fea_datasets_mean = tf.gather(obj_means, fea_idx, axis=0)
-        _pf = Pareto(Dataset(query_points=tf.zeros_like(fea_datasets_mean), observations=fea_datasets_mean))
-        _nadir_pt = self._calculate_nadir(_pf, nadir_setting=self._nadir_setting)
-        lb_points, ub_points = _pf.get_partitioned_cell_bounds(_nadir_pt)
+        _pf = Pareto(fea_datasets_mean)
+        ref_pt = get_reference_point(_pf.front)
+        lb_points, ub_points = _pf.get_hyper_cell_bounds(tf.constant([-inf] * fea_datasets_mean.shape[-1],
+                                                                     dtype=fea_datasets_mean.dtype), ref_pt)
         obj_sampler = BatchReparametrizationSampler(self._sample_size, obj_model)
         con_sampler = BatchReparametrizationSampler(self._sample_size, con_model)
 
@@ -263,8 +249,8 @@ class BatchMonteCarloConstraintHypervolumeExpectedImprovement(ConstraintHypervol
                 # get hvi length within each cell:-> [..., S, Cq_j, K, num_obj]
                 lengths_j = tf.maximum((ub_points[tf.newaxis, tf.newaxis, :, tf.newaxis, :]
                                         - overlap_vertices), 0.0)
-                # refer: Eq. 10 of A. 3: [..., S, B]
-                fea = tf.reduce_prod(tf.sigmoid(con_samples/self.eta), axis=-1)
+                # refer: Eq. 10 of A. 3: [..., S, B], note <0 denote feasible
+                fea = tf.reduce_prod(tf.sigmoid(-con_samples/self.eta), axis=-1)
                 # [..., S, Cq_j, j]
                 fea = tf.gather(fea, q_choose_j, axis=-1)
                 # [..., S, Cq_j]

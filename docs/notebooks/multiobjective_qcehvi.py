@@ -24,7 +24,7 @@ def create_bo_model(data, input_dim=2, l=1.0):
     lengthscale = l * np.ones(input_dim, dtype=gpflow.default_float())
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=lengthscale)
     jitter = gpflow.kernels.White(1e-12)
-    gpr = gpflow.models.GPR(data.astuple(), kernel + jitter, noise_variance=1e-5)
+    gpr = gpflow.models.GPR(data.astuple(), kernel + jitter, noise_variance=1e-2)
     gpflow.set_trainable(gpr.likelihood, False)
     return create_model({
         "model": gpr,
@@ -101,11 +101,10 @@ result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
 
 # +
 datasets = result.try_get_final_datasets()
-data_observations = datasets[OBJECTIVE].observations
-mask_fail = tf.reduce_all(tf.greater(- data_observations[CONSTRAINT].observations), axis=-1)
+mask_fail = tf.reduce_any(tf.greater(datasets[CONSTRAINT].observations, 0.0), axis=-1)
 
 from util.plotting import plot_bo_points_in_obj_space
-plot_bo_points_in_obj_space(initial_data[OBJECTIVE], mask_fail=mask_fail)
+plot_bo_points_in_obj_space(datasets[OBJECTIVE].observations, num_init=num_initial_points, mask_fail=mask_fail)
 plt.show()
 # -
 

@@ -214,7 +214,6 @@ class BatchMonteCarloConstraintHypervolumeExpectedImprovement(BatchAcquisitionFu
         obj_sampler = BatchReparametrizationSampler(self._sample_size, obj_model)
         con_sampler = BatchReparametrizationSampler(self._sample_size, con_model)
 
-        # Fixme: At has NaN
         def batch_hvei(at: TensorType) -> TensorType:
             """
             :param at: Batches of query points at which to sample the predictive distribution, with

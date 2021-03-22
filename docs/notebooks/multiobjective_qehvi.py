@@ -77,11 +77,12 @@ tf.random.set_seed(1793)
 # #
 # # We'll model the different objective functions with their own Gaussian process regression models.
 #
-def create_bo_model(data, input_dim=2, l=0.3):
+def create_bo_model(data, input_dim=2, l=1.0):
     variance = tf.math.reduce_variance(data.observations)
     lengthscale = l * np.ones(input_dim, dtype=gpflow.default_float())
     kernel = gpflow.kernels.Matern52(variance=variance, lengthscales=lengthscale)
-    gpr = gpflow.models.GPR(data.astuple(), kernel, noise_variance=1e-5)
+    jitter = gpflow.kernels.White(1e-12)
+    gpr = gpflow.models.GPR(data.astuple(), kernel + jitter, noise_variance=1e-2)
     # gpflow.set_trainable(gpr.likelihood, False)
     return create_model({
         "model": gpr,
@@ -148,7 +149,7 @@ def create_bo_model(data, input_dim=2, l=0.3):
 # where $\mathbf x \in [0,1]^d$ and $r=0.2$. 
 #
 # The goal here is to *minimize* both objectives.
-
+# TODO: This has been checked numerically same as botorch version
 class C2_DTLZ2:
     r = 0.2
 
@@ -186,17 +187,18 @@ class C2_DTLZ2:
         # indices = torch.arange(f_X.shape[1], device=f_X.device).repeat(f_X.shape[1], 1)
         mask = ~tf.cast(tf.eye(self.M), dtype=tf.bool)
         indices = tf.tile(tf.constant(np.arange(self.M))[tf.newaxis, ...], [self.M, 1])
-        indexer = tf.reshape(indices[mask], (self.M, self.M - 1))
+        indexer = tf.reshape(indices[mask], (self.M, self.M - 1)) # [M, M-1]
         # create an index without i
-        # [..., M, M]
+        # [..., M]->[..., M, M]
         term2_inner = tf.tile(f_X[:, tf.newaxis, :], [1, self.M, 1])
         # [..., M, M]&[M, M-1]->[..., M, M-1]
+        # FIXME:
         term2_inner = tf.gather(term2_inner, indexer, axis=-1)[:, 0, :]
         # [..., M]
         term2 = tf.reduce_sum(term2_inner ** 2 - self.r ** 2, axis=-1)
         # get minimum across M: [...]
         min1 = tf.reduce_min(term1 + term2, axis=-1, keepdims=True)
-        #
+        # checked
         min2 = tf.reduce_sum((f_X - 1 / sqrt(tf.cast(self.M, dtype=x.dtype))) ** 2 -
                              self.r ** 2, axis=1, keepdims=True)
         # outer min
@@ -227,6 +229,7 @@ num_initial_points = 2 * (input_dim + 1)
 initial_query_points = search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 
+print(observer(0.2 * np.ones([1, 12])))
 
 objective_models = [(create_bo_model(Dataset(initial_data[OBJECTIVE].query_points,
                                              tf.gather(initial_data[OBJECTIVE].observations, [i], axis=1)),
@@ -250,10 +253,10 @@ result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
 
 # +
 datasets = result.try_get_final_datasets()
-data_query_points = datasets[OBJECTIVE].query_points
+mask_fail = tf.reduce_any(tf.greater(datasets[CONSTRAINT].observations, 0.0), axis=-1)
 
 from util.plotting import plot_bo_points_in_obj_space
-plot_bo_points_in_obj_space(initial_data[OBJECTIVE])
+plot_bo_points_in_obj_space(datasets[OBJECTIVE].observations, num_init=num_initial_points, mask_fail=mask_fail)
 plt.show()
 # -
 

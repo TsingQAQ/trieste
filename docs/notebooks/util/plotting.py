@@ -243,7 +243,8 @@ def plot_bo_points_in_obj_space(
     )
 
     _, dom = non_dominated(observations)
-    idx_pareto = np.where(dom == 0)
+    idx_pareto = np.where(dom == 0) if mask_fail is None else \
+        np.where(np.logical_and(dom == 0, ~mask_fail))
 
     pts = observations
     num_pts = pts.shape[0]

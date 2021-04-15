@@ -1,4 +1,25 @@
-# # P Pareto Frontier Entropy Search
+# -*- coding: utf-8 -*-
+# # Parallel Pareto Frontier Entropy Search
+
+# ## Related Work
+
+# - [MESMO](https://par.nsf.gov/servlets/purl/10145801) paper, NIPS 2019, Belakaria et al
+# - [PFES](http://proceedings.mlr.press/v119/suzuki20a.html), ICML 2020, Shinya Suzuki et al
+#
+#
+# Multi-Fidelity Part
+# - [MF-OSEMO](file:///C:/Users/Administrator/Downloads/6561-Article%20Text-9786-1-10-20200519.pdf) paper, 2020 AAAI, Belakaria et al
+#
+# Constraint Part
+# - [MESMOC](https://arxiv.org/pdf/2009.01721.pdf) paper, NIPS 2020 Workshop, Belakaria et al
+# - [MESMOC+](https://arxiv.org/pdf/2011.01150.pdf) paper, Daniel Fernández-Sánchez (Daniel Hernández-Lobato)
+#
+# Uncatogrized
+# - [iMOCA](https://arxiv.org/pdf/2009.05700.pdf) paper, NIPS 2020 Workshop, Belakaria et al
+
+# -----------
+
+# ## Main
 
 # Recall the definition of acquisition function in PFES paper [1]:
 # \begin{equation}
@@ -34,7 +55,7 @@
 
 # -------
 
-# ## Deriviation of the differential entropy based on conditional distribution 
+# ### Deriviation of the differential entropy based on conditional distribution 
 
 # Thorem 3.1 of PFES paper reveals the calculation of $H[p(\boldsymbol{f}_x \vert D, \boldsymbol{f}_x \prec \mathcal{F^*})]$ for a single query points:
 
@@ -79,7 +100,7 @@
 
 # ----------------------
 
-# ## Single Query Point Case (PFES):
+# ### Single Query Point Case (PFES):
 
 # \begin{equation}
 # \begin{aligned}
@@ -91,7 +112,7 @@
 
 # ------------------
 
-# ## Batch Case by GIBBON
+# ### Batch Case by GIBBON
 
 # In the most simple case, we assume noise free and single fidelity condition. i.e., $C_i$ = $A_i$. 
 
@@ -102,3 +123,7 @@
 # \end{equation}
 
 # -------
+
+# ## Plan
+# - Implement PFES
+# - Add GIBBON to evaluate the Batch Performance

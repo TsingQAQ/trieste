@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from itertools import combinations, product
+from itertools import product
 from math import inf
 from typing import Callable
 
@@ -202,6 +202,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
             raise ValueError("Dataset must be populated.")
 
         query_points = self._search_space.sample(num_samples=self._grid_size)
+        tf.debugging.assert_same_float_dtype([dataset.query_points, query_points])
         query_points = tf.concat([dataset.query_points, query_points], 0)
         fmean, fvar = model.predict(query_points)
         fsd = tf.math.sqrt(fvar)
@@ -513,11 +514,13 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
 
 class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
     """
-    Builder for the :func:`hv_probability_of_improvement` acquisition function
-    refer yang2019efficient
+    Builder for the :func:`expected_hv_improvement` acquisition function.
+    The implementation of the acquisition function largely
+    follows :cite:`yang2019efficient`
     """
 
     def __repr__(self) -> str:
+        """"""
         return "ExpectedHypervolumeImprovement()"
 
     def prepare_acquisition_function(
@@ -526,14 +529,14 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
         """
         :param dataset: The data from the observer. Must be populated.
         :param model: The model over the specified ``dataset``.
-        :return: The expecyed_hv_of_improvement function.
+        :return: The expected_hv_improvement function.
         """
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
 
         _pf = Pareto(mean)
         _reference_pt = get_reference_point(_pf.front)
-        return lambda at: expected_hv_improvement(model, _pf, _reference_pt)(at)
+        return expected_hv_improvement(model, _pf, _reference_pt)
 
 
 def expected_hv_improvement(
@@ -542,23 +545,28 @@ def expected_hv_improvement(
     reference_point: TensorType,
 ) -> AcquisitionFunction:
     r"""
-    HV calculation using Eq. 44 of yang2019efficient paper
+    HV calculation using Eq. 44 of :cite:`yang2019efficient` paper.
+    The expected hypervolume calculation is performed in the non-dominated region, which,
+    provided the partitioned cell, can be reformulated as a combination of several one
+    dimensional generalized expected improvements based on each of the partitioned cell.
+    The generalized expected improvement can be further divided into 2 types for easier
+    math operation, corresponding to Psi function and nu function calculations.
+    Mainly referring Eq. 44, and Eq. 45
     Note:
-    1. Since in Trieste we do not assume the use of a certain non-dominated partition algorithm.
-       we do not assume the last dimension partition has only one (lower) bound (which is used
-       in the yang2019efficient paper), this is not equally efficient as the original paper, but
-       is applicable to different non-dominated partition algorithm
-    2. The Psi and nu function in the original paper is defined for a maximization problem, to
-       make use of the same notation for easier reading, we inverse our problem (as maximization)
-       to make use of the same equation
-    3. The calculation of EHVI based on Eq.44 is independent on the order of each cell
+    1. Since in Trieste we do not assume the use of a certain non-dominated partition algorithm,
+       we do not assume the last dimension partitioned cell has only one (lower) bound
+       (which is used in the :cite:`yang2019efficient` paper). This is not as efficient as
+        the original paper, but is applicable to different non-dominated partition algorithm.
+    2. The Psi and nu function in the original paper is defined for a maximization problem. To
+       make use of the same notation for easier following, we inverse our problem (as maximization)
+       to make use of the same equation.
 
     :param model: The model of the objective function.
-    :param at: The points at which to evaluate the probability of feasibility.
-                Must have rank at least two
     :param pareto: Pareto class
     :param reference_point The reference point for calculating hypervolume
-    :return: The hypervolume expected improvement at ``at``.
+    :return The expected_hv_improvement acquisition function modified for objective
+        minimisation. This function will raise :exc:`ValueError` or
+        :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
     """
 
     def acquisition(x: TensorType) -> TensorType:
@@ -572,11 +580,12 @@ def expected_hv_improvement(
 
         def Psi(a, b, mean, std) -> TensorType:
             """
-            Generic Expected Improvement o reference a, defined at Eq. 19 of [yang2019]
-            param: a: [num_cells, out_dim] lower bounds
-            param: b: [num_cells, out_dim] upper bounds
-            param: mean: [..., out_dim]
-            param: var: [..., out_dim]
+            Generic Expected Improvement defined at Eq. 19 in :cite:`yang2019efficient`,
+            calculate the expected improvement on reference a, integrating from b
+            :param a: shape [num_cells, out_dim] expected improvement reference point
+            :param b: shape [num_cells, out_dim] integral upper bounds
+            :param mean: shape [..., out_dim]
+            :param std: shape [..., out_dim]
             """
             return std * normal.prob((b - mean) / std) + (mean - a) * (
                 1 - normal.cdf((b - mean) / std)
@@ -584,9 +593,12 @@ def expected_hv_improvement(
 
         def nu(lb, ub, mean, std) -> TensorType:
             """
-            Eq. 25 of [yang2019]
-            Note: as we deal with minimization, we use negative version of our problem
-             to make use of the original formula
+            A special expected improvement given fixed improvement,
+            defined at Eq. 25 in :cite:`yang2019efficient`
+            :param lb: shape [..., num_cells, out_dim] slice lower bound
+            :param ub: shape [..., num_cells, out_dim] slice upper bound
+            :param mean: shape [..., out_dim]
+            :param std: shape [..., out_dim]
             """
             return (ub - lb) * (1 - normal.cdf((ub - mean) / std))
 
@@ -597,11 +609,11 @@ def expected_hv_improvement(
         neg_candidate_mean = -tf.expand_dims(candidate_mean, 1)  # [..., 1, out_dim]
         candidate_std = tf.expand_dims(candidate_std, 1)  # [..., 1, out_dim]
 
-        lb_points, ub_points = pareto.get_hyper_cell_bounds(
+        lb_points, ub_points = pareto.hypercell_bounds(
             tf.constant([-inf] * candidate_mean.shape[-1], dtype=x.dtype), reference_point
         )
 
-        neg_lb_points, neg_ub_points = -ub_points, -lb_points  # ref Note. 3
+        neg_lb_points, neg_ub_points = -ub_points, -lb_points
 
         neg_ub_points = tf.minimum(
             neg_ub_points, 1e10
@@ -618,10 +630,8 @@ def expected_hv_improvement(
         nu_contrib = nu(neg_lb_points, neg_ub_points, neg_candidate_mean, candidate_std)
 
         # get stacked factors of Eq. 45
-        # [2^m, dim_indices]
-        cross_index = tf.constant(
-            list(product(*[[0, 1] for _ in range(reference_point.shape[-1])]))
-        )
+        # [2^m, indices_at_dim]
+        cross_index = tf.constant(list(product(*[[0, 1]] * reference_point.shape[-1])))
 
         # Take the cross product of psi_diff and nu across all outcomes
         # [..., num_cells, 2(operation_num, refer Eq. 45), num_obj]
@@ -641,130 +651,6 @@ def expected_hv_improvement(
         )
 
     return acquisition
-
-
-class BatchMonteCarloHypervolumeExpectedImprovement(SingleModelAcquisitionBuilder):
-    """
-    Use of the inclusion-exclusion method
-    refer cite:daulton2020differentiable
-
-    """
-
-    def __init__(self, sample_size: int = 512, *, jitter: float = DEFAULTS.JITTER):
-        """
-        :param sample_size: The number of samples for each batch of points.
-        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
-            the covariance matrix.
-        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive, or
-            ``jitter`` is negative.
-        """
-        tf.debugging.assert_positive(sample_size)
-        tf.debugging.assert_greater_equal(jitter, 0.0)
-
-        super().__init__()
-
-        self._sample_size = sample_size
-        self._jitter = jitter
-        self.q = -1
-
-    def __repr__(self) -> str:
-        """"""
-        return (
-            f"BatchMonteCarloHypervolumeExpectedImprovement({self._sample_size!r},"
-            f" jitter={self._jitter!r})"
-        )
-
-    def _cache_q_subset_indices(self, q: int) -> None:
-        r"""Cache indices corresponding to all subsets of `q`.
-        This means that consecutive calls to `forward` with the same
-        `q` will not recompute the indices for all (2^q - 1) subsets.
-        Note: this will use more memory than regenerating the indices
-        for each i and then deleting them, but it will be faster for
-        repeated evaluations (e.g. during optimization).
-        Args:
-            q: batch size
-        """
-        if q != self.q:
-            indices = list(range(q))
-            self.q_subset_indices = {
-                f"q_choose_{i}": tf.constant(list(combinations(indices, i)))
-                for i in range(1, q + 1)
-            }
-            self.q = q
-
-    def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
-    ) -> AcquisitionFunction:
-        """
-        :param dataset: The data from the observer. Must be populated.
-        :param model: The model over the specified ``dataset``. Must have event shape [1].
-        :return: The batch *expected improvement* acquisition function.
-        :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, or ``model``
-            does not have an event shape of [1].
-        """
-
-        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        mean, _ = model.predict(dataset.query_points)
-
-        _pf = Pareto(mean)
-        _reference_pt = get_reference_point(_pf.front)
-
-        lb_points, ub_points = _pf.get_hyper_cell_bounds(
-            tf.constant([-inf] * mean.shape[-1], dtype=mean.dtype), _reference_pt
-        )
-        sampler = BatchReparametrizationSampler(self._sample_size, model)
-
-        def batch_hvei(at: TensorType) -> TensorType:
-            """
-            :param at: Batches of query points at which to sample the predictive distribution, with
-            shape `[..., B, D]`, for batches of size `B` of points of dimension `D`. Must have a
-            consistent batch size across all calls to :meth:`sample` for any given
-            Complexity: O(num_obj * SK(2^q - 1))
-            """
-            # [..., S, B, num_obj]
-            samples = sampler.sample(at, jitter=self._jitter)
-
-            q = at.shape[-2]  # B
-            self._cache_q_subset_indices(q)
-
-            areas_per_segment = None
-            # Inclusion-Exclusion loop
-            for j in range(1, q + 1):
-                # chose combination
-                q_choose_j = self.q_subset_indices[f"q_choose_{j}"]
-                # get combination of subsets: [..., S, B, num_obj] -> [..., S, Cq_j, j, num_obj]
-                obj_subsets = tf.gather(samples, q_choose_j, axis=-2)
-                # get lower vertices of overlap:
-                # [..., S, Cq_j, j, num_obj] -> [..., S, Cq_j, num_obj]
-                overlap_vertices = tf.reduce_max(obj_subsets, axis=-2)
-
-                # compare overlap vertices and lower bound of each cell:
-                # -> [..., S, K, Cq_j, num_obj]
-                overlap_vertices = tf.maximum(
-                    tf.expand_dims(overlap_vertices, -3),
-                    lb_points[tf.newaxis, tf.newaxis, :, tf.newaxis, :],
-                )
-
-                # get hvi length within each cell:-> [..., S, Cq_j, K, num_obj]
-                lengths_j = tf.maximum(
-                    (ub_points[tf.newaxis, tf.newaxis, :, tf.newaxis, :] - overlap_vertices), 0.0
-                )
-                # take product over hyperrectangle side lengths to compute area within each K
-                # sum over all subsets of size Cq_j #
-                areas_j = tf.reduce_sum(tf.reduce_prod(lengths_j, axis=-1), axis=-1)
-                # [..., S, K]
-                areas_per_segment = (
-                    (-1) ** (j + 1) * areas_j
-                    if areas_per_segment is None
-                    else areas_per_segment + (-1) ** (j + 1) * areas_j
-                )
-
-            # sum over segments(cells) and average over MC samples
-            # return tf.reduce_mean(batch_improvement, axis=-1, keepdims=True)  # [..., 1]
-            areas_in_total = tf.reduce_sum(areas_per_segment, axis=-1)
-            return tf.reduce_mean(areas_in_total, axis=-1, keepdims=True)
-
-        return batch_hvei
 
 
 def get_reference_point(front: TensorType) -> TensorType:
@@ -773,116 +659,6 @@ def get_reference_point(front: TensorType) -> TensorType:
     """
     f = tf.math.reduce_max(front, axis=0) - tf.math.reduce_min(front, axis=0)
     return tf.math.reduce_max(front, axis=0) + 2 * f / front.shape[0]
-
-
-class PFES(SingleModelAcquisitionBuilder):
-    def __repr__(self) -> str:
-        return "PFES()"
-
-    def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
-    ) -> AcquisitionFunction:
-        """
-        :param dataset: The data from the observer. Must be populated.
-        :param model: The model over the specified ``dataset``.
-        :return: The expecyed_hv_of_improvement function.
-        """
-        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        # Optimize through NSGA2
-
-        predicted_pareto_front = None
-
-        mean, _ = model.predict(predicted_pareto_front)
-        _pf = Pareto(mean)
-        _reference_pt = get_reference_point(_pf.front)
-        return lambda at: expected_hv_improvement(model, _pf, _reference_pt)(at)
-
-
-def pfes(
-    model: ProbabilisticModel,
-    pareto: Pareto,
-) -> AcquisitionFunction:
-    def acquisition(x: TensorType) -> TensorType:
-        tf.debugging.assert_shapes(
-            [(x, [..., 1, None])],
-            message="This acquisition function only supports batch sizes of one.",
-        )
-        normal = tfp.distributions.Normal(
-            loc=tf.zeros(shape=1, dtype=x.dtype), scale=tf.ones(shape=1, dtype=x.dtype)
-        )
-
-        def Psi(a, b, mean, std) -> TensorType:
-            """
-            Generic Expected Improvement o reference a, defined at Eq. 19 of [yang2019]
-            param: a: [num_cells, out_dim] lower bounds
-            param: b: [num_cells, out_dim] upper bounds
-            param: mean: [..., out_dim]
-            param: var: [..., out_dim]
-            """
-            return std * normal.prob((b - mean) / std) + (mean - a) * (
-                1 - normal.cdf((b - mean) / std)
-            )
-
-        def nu(lb, ub, mean, std) -> TensorType:
-            """
-            Eq. 25 of [yang2019]
-            Note: as we deal with minimization, we use negative version of our problem
-             to make use of the original formula
-            """
-            return (ub - lb) * (1 - normal.cdf((ub - mean) / std))
-
-        candidate_mean, candidate_var = model.predict(tf.squeeze(x, -2))
-        candidate_std = tf.sqrt(candidate_var)
-
-        # calc ehvi assuming maximization
-        neg_candidate_mean = -tf.expand_dims(candidate_mean, 1)  # [..., 1, out_dim]
-        candidate_std = tf.expand_dims(candidate_std, 1)  # [..., 1, out_dim]
-
-        lb_points, ub_points = pareto.get_hyper_cell_bounds(
-            tf.constant([-inf] * candidate_mean.shape[-1], dtype=x.dtype), reference_point
-        )
-
-        neg_lb_points, neg_ub_points = -ub_points, -lb_points  # ref Note. 3
-
-        neg_ub_points = tf.minimum(
-            neg_ub_points, 1e10
-        )  # this maximum: 1e10 is heuristically chosen
-
-        psi_ub = Psi(
-            neg_lb_points, neg_ub_points, neg_candidate_mean, candidate_std
-        )  # [..., num_cells, out_dim]
-        psi_lb = Psi(
-            neg_lb_points, neg_lb_points, neg_candidate_mean, candidate_std
-        )  # [..., num_cells, out_dim]
-
-        psi_lb2ub = tf.maximum(psi_lb - psi_ub, 0.0)  # [..., num_cells, out_dim]
-        nu_contrib = nu(neg_lb_points, neg_ub_points, neg_candidate_mean, candidate_std)
-
-        # get stacked factors of Eq. 45
-        # [2^m, dim_indices]
-        cross_index = tf.constant(
-            list(product(*[[0, 1] for _ in range(reference_point.shape[-1])]))
-        )
-
-        # Take the cross product of psi_diff and nu across all outcomes
-        # [..., num_cells, 2(operation_num, refer Eq. 45), num_obj]
-        stacked_factors = tf.concat(
-            [tf.expand_dims(psi_lb2ub, -2), tf.expand_dims(nu_contrib, -2)], axis=-2
-        )
-
-        # [..., num_cells, 2^m, 2(operation_num), num_obj]
-        factor_combinations = tf.linalg.diag_part(tf.gather(stacked_factors, cross_index, axis=-2))
-
-        # calculate Eq. 44
-        # prod of different output_dim -> sum over 2^m combination -> sum over num_cells; [..., 1]
-        return tf.reduce_sum(
-            tf.reduce_sum(tf.reduce_prod(factor_combinations, axis=-1), axis=-1),
-            axis=-1,
-            keepdims=True,
-        )
-
-    return acquisition
-
 
 
 class IndependentReparametrizationSampler:

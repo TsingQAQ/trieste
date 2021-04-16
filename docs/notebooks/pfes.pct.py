@@ -12,7 +12,7 @@
 #
 # Constraint Part
 # - [MESMOC](https://arxiv.org/pdf/2009.01721.pdf) paper, NIPS 2020 Workshop, Belakaria et al
-# - [MESMOC+](https://arxiv.org/pdf/2011.01150.pdf) paper, Daniel Fernández-Sánchez (Daniel Hernández-Lobato)
+# - [MESMOC+](https://arxiv.org/pdf/2011.01150.pdf) paper, AISTATS, Daniel Fernández-Sánchez (Daniel Hernández-Lobato)
 #
 # Uncatogrized
 # - [iMOCA](https://arxiv.org/pdf/2009.05700.pdf) paper, NIPS 2020 Workshop, Belakaria et al
@@ -20,6 +20,22 @@
 # -----------
 
 # ## Main
+
+# \begin{equation}
+# \begin{aligned}
+# \alpha(x) &= H[PF\vert D] - \mathbb{E}_{f_x}H[PF \vert D, \{x, \boldsymbol{f}_x\}] \\& = H[\boldsymbol{f}_x\vert D] - \mathbb{E}_{PF}H[\boldsymbol{f}_x \vert D, x, PF]
+# \end{aligned}
+# \end{equation}
+
+# MESMO approximation:
+
+# \begin{equation}
+# H[\boldsymbol{f}_x \vert D, x, PF] \approx \sum_{j=1}^K H[y^j \vert D, x, max\{z_1^j, ..., z_m^j\}]
+# \end{equation}
+
+# Where $\{z_1,..., z_m\}$ are sampled pareto front points
+
+# ---------------
 
 # Recall the definition of acquisition function in PFES paper [1]:
 # \begin{equation}

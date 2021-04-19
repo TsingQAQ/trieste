@@ -643,6 +643,47 @@ def expected_hv_improvement(
     return acquisition
 
 
+class ParetoFrontierEntropySearch(SingleModelAcquisitionBuilder):
+    """
+    Builder for the pareto frontier entropy search acquisition function.
+    The implementation of the acquisition function largely
+    follows :cite:`None`
+    """
+    def __init__(self, num_samples: int = 5):
+        if num_samples <= 0:
+            raise ValueError(f"num_samples must be positive, got {num_samples}")
+        self._num_samples = num_samples
+
+    def __repr__(self) -> str:
+        """"""
+        return "ParetoFrontierEntropySearch()"
+
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ProbabilisticModel
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer. Must be populated.
+        :param model: The model over the specified ``dataset``.
+        :return: The expected hypervolume improvement acquisition function.
+        """
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        mean, _ = model.predict(dataset.query_points)
+
+        def pf_sample_through_rff(gp_rff_samples):
+            # TODO: define an mo strategy
+            raise NotImplementedError
+
+        _neg_pf = Pareto(-mean)
+        _reference_pt = get_reference_point(_neg_pf.front)
+        return pareto_frontier_entropy_search(model, _neg_pf, _reference_pt)
+
+
+def pareto_frontier_entropy_search(
+        model: ProbabilisticModel,
+        pareto: Pareto,
+        reference_point: TensorType,):
+    pass
+
 class IndependentReparametrizationSampler:
     r"""
     This sampler employs the *reparameterization trick* to approximate samples from a

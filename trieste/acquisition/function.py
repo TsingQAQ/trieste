@@ -33,6 +33,8 @@ from ..type import TensorType
 from ..utils import DEFAULTS
 from ..utils.pareto import Pareto, get_reference_point
 from .sampler import BatchReparametrizationSampler, GumbelSampler
+from gpflux.layers.basis_functions.random_fourier_features import RandomFourierFeatures
+from gpflux.sampling.kernel_with_feature_decomposition import KernelWithFeatureDecomposition
 
 AcquisitionFunction = Callable[[TensorType], TensorType]
 """
@@ -643,10 +645,40 @@ class ParetoFrontierEntropySearch(SingleModelAcquisitionBuilder):
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
 
-        def pf_sample_through_rff(gp_rff_samples):
+        def pf_sample_through_parameteric_approx_gp_posterior(gp_rff_samples, seed):
             # TODO: define an mo strategy
             raise NotImplementedError
 
+        def build_approx_posterior_through_rff(data, model, inducing_point_selector=KMeans) -> tf.keras.Model:
+            """
+            Build Parametric approximation model posterior trajectory through RFF
+            """
+            var = tf.math.reduce_variance(data.observations)
+            kernel = model.kernel
+            num_rff = 10000
+            features = RandomFourierFeatures(kernel, num_rff, dtype=default_float())
+            coefficients = np.ones((num_rff, 1), dtype=default_float())
+            kernel_with_features = KernelWithFeatureDecomposition(kernel, features, coefficients)
+
+            layer = gpflux.layers.GPLayer(
+                kernel_with_features,
+                inducing_variable,
+                num_data,
+                whiten=False,
+                num_latent_gps=1,
+                mean_function=gpflow.mean_functions.Zero(),
+            )
+            likelihood = gpflow.likelihoods.Gaussian(1e-5)
+            gpflow.utilities.set_trainable(likelihood, False)
+            likelihood_layer = gpflux.layers.LikelihoodLayer(likelihood)
+            model = gpflux.models.DeepGP([layer], likelihood_layer)
+            return model
+
+        paretos = []
+        for i in range(self._num_samples):
+            paretos.append(pf_sample_through_rff(seed=i))
+
+        # TODO
         _neg_pf = Pareto(-mean)
         _reference_pt = get_reference_point(_neg_pf.front)
         return pareto_frontier_entropy_search(model, _neg_pf, _reference_pt)

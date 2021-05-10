@@ -22,6 +22,7 @@ from collections.abc import Mapping
 from itertools import product
 from math import inf
 from typing import Callable, Optional
+import gpflux
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -649,7 +650,7 @@ class ParetoFrontierEntropySearch(SingleModelAcquisitionBuilder):
             # TODO: define an mo strategy
             raise NotImplementedError
 
-        def build_approx_posterior_through_rff(data, model, inducing_point_selector=KMeans) -> tf.keras.Model:
+        def build_approx_posterior_through_rff(data, model) -> tf.keras.Model:
             """
             Build Parametric approximation model posterior trajectory through RFF
             """
@@ -657,7 +658,7 @@ class ParetoFrontierEntropySearch(SingleModelAcquisitionBuilder):
             kernel = model.kernel
             num_rff = 10000
             features = RandomFourierFeatures(kernel, num_rff, dtype=default_float())
-            coefficients = np.ones((num_rff, 1), dtype=default_float())
+            coefficients = tf.ones((num_rff, 1), dtype=default_float())
             kernel_with_features = KernelWithFeatureDecomposition(kernel, features, coefficients)
 
             layer = gpflux.layers.GPLayer(

@@ -656,11 +656,13 @@ class ParetoFrontierEntropySearch(SingleModelAcquisitionBuilder):
             """
             var = tf.math.reduce_variance(data.observations)
             kernel = model.kernel
+            # get kernel feature by using RFF
             num_rff = 10000
-            features = RandomFourierFeatures(kernel, num_rff, dtype=default_float())
-            coefficients = tf.ones((num_rff, 1), dtype=default_float())
+            features = RandomFourierFeatures(kernel, num_rff, dtype=var.dtype)
+            coefficients = tf.ones((num_rff, 1), dtype=var.dtype)
+            # approx kernel with feature
             kernel_with_features = KernelWithFeatureDecomposition(kernel, features, coefficients)
-
+            # build a parametric model for optimization
             layer = gpflux.layers.GPLayer(
                 kernel_with_features,
                 inducing_variable,

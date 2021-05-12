@@ -143,3 +143,197 @@
 # ## Plan
 # - Implement PFES
 # - Add GIBBON to evaluate the Batch Performance
+
+# -----------------
+
+# ## Sample GP Posterior in Weight space approximation by RFF
+
+# +
+import numpy as np
+import tensorflow as tf
+import matplotlib.pyplot as plt
+
+import gpflow
+import gpflux
+
+from gpflow.config import default_float
+
+from gpflux.layers.basis_functions.random_fourier_features import RandomFourierFeatures
+from gpflux.sampling import KernelWithFeatureDecomposition
+from gpflux.models.deep_gp import sample_dgp
+
+
+tf.keras.backend.set_floatx("float64")
+# -
+
+data = np.genfromtxt("util/data/regression_1D.csv", delimiter=",")
+X = data[:, 0].reshape(-1, 1)
+Y = data[:, 1].reshape(-1, 1)
+k = gpflow.kernels.Matern52()
+m = gpflow.models.GPR(data=(X, Y), kernel=k, mean_function=None)
+opt = gpflow.optimizers.Scipy()
+opt_logs = opt.minimize(m.training_loss, m.trainable_variables, options=dict(maxiter=100))
+
+# Approaximate the kernel with RFF
+
+# +
+from typing import Callable
+
+kernel = gpflow.kernels.Matern52()
+num_rff = 10000
+features = RandomFourierFeatures(kernel, num_rff, dtype=X.dtype)
+coefficients = tf.ones((num_rff, 1), dtype=X.dtype)
+kernel_with_features = KernelWithFeatureDecomposition(kernel, features, coefficients)
+
+# 这个inducing point  是啥啊
+Z = tf.gather(data, [0], axis=1)
+inducing_variable = gpflow.inducing_variables.InducingPoints(Z)
+gpflow.utilities.set_trainable(inducing_variable, False)
+
+layer = gpflux.layers.GPLayer(
+    kernel_with_features,
+    inducing_variable,
+    data.shape[0],
+    whiten=False,
+    num_latent_gps=1,
+    mean_function=gpflow.mean_functions.Zero(),
+)
+
+likelihood_layer = gpflux.layers.LikelihoodLayer(gpflow.likelihoods.Gaussian())  # noqa: E231
+dgp = gpflux.models.DeepGP([layer], likelihood_layer)
+
+# +
+## generate test points for prediction
+xx = np.linspace(-0.1, 1.1, 100).reshape(100, 1)  # test points must be of shape (N, D)
+
+## predict mean and variance of latent GP at test points
+mean, var = m.predict_f(xx)
+
+## generate 10 samples from posterior
+tf.random.set_seed(1)  # for reproducibility
+samples = m.predict_f_samples(xx, 10)  # shape (10, 100, 1)
+
+    
+## plot
+plt.figure(figsize=(12, 6))
+plt.plot(X, Y, "kx", mew=2)
+plt.plot(xx, mean, "C0", lw=2)
+plt.fill_between(
+    xx[:, 0],
+    mean[:, 0] - 1.96 * np.sqrt(var[:, 0]),
+    mean[:, 0] + 1.96 * np.sqrt(var[:, 0]),
+    color="C0",
+    alpha=0.2,
+)
+
+for _ in range(10):
+    # `sample_dgp` returns a callable - which we subsequently evaluate
+    f_sample: Callable[[tf.Tensor], tf.Tensor] = sample_dgp(dgp)
+    plt.plot(xx, f_sample(xx).numpy(), color="C1")
+
+plt.plot(xx, samples[:, :, 0].numpy().T, "C0", linewidth=0.5)
+_ = plt.xlim(-0.1, 1.1)
+# -
+
+# ------------------
+
+# The same notebook from https://secondmind-labs.github.io/GPflux/notebooks/efficient_sampling.html  
+# With a modificatio of data from another notebook
+
+# +
+import numpy as np
+import tensorflow as tf
+import matplotlib.pyplot as plt
+
+import gpflow
+import gpflux
+
+from gpflow.config import default_float
+
+from gpflux.layers.basis_functions.random_fourier_features import RandomFourierFeatures
+from gpflux.sampling import KernelWithFeatureDecomposition
+from gpflux.models.deep_gp import sample_dgp
+
+tf.keras.backend.set_floatx("float64")
+
+# +
+data = np.genfromtxt("util/data/regression_1D.csv", delimiter=",")
+X = data[:, 0].reshape(-1, 1)
+Y = data[:, 1].reshape(-1, 1)
+
+# data = np.load("snelson1d.npz")
+# X, Y = data = data["X"], data["Y"]
+
+num_data, input_dim = X.shape
+
+# +
+kernel = gpflow.kernels.Matern52()
+Z = np.linspace(X.min(), X.max(), 10).reshape(-1, 1).astype(np.float64)
+
+inducing_variable = gpflow.inducing_variables.InducingPoints(Z)
+gpflow.utilities.set_trainable(inducing_variable, False)
+
+num_rff = 10000
+eigenfunctions = RandomFourierFeatures(kernel, num_rff, dtype=default_float())
+eigenvalues = np.ones((num_rff, 1), dtype=default_float())
+kernel_with_features = KernelWithFeatureDecomposition(kernel, eigenfunctions, eigenvalues)
+# -
+
+layer = gpflux.layers.GPLayer(
+    kernel_with_features,
+    inducing_variable,
+    num_data,
+    whiten=False,
+    num_latent_gps=1,
+    mean_function=gpflow.mean_functions.Zero(),
+)
+likelihood_layer = gpflux.layers.LikelihoodLayer(gpflow.likelihoods.Gaussian())  # noqa: E231
+dgp = gpflux.models.DeepGP([layer], likelihood_layer)
+model = dgp.as_training_model()
+
+# +
+model.compile(tf.optimizers.Adam(learning_rate=0.1))
+
+callbacks = [
+    tf.keras.callbacks.ReduceLROnPlateau(
+        monitor="loss",
+        patience=5,
+        factor=0.95,
+        verbose=0,
+        min_lr=1e-6,
+    )
+]
+
+history = model.fit(
+    {"inputs": X, "targets": Y},
+    batch_size=num_data,
+    epochs=300,
+    callbacks=callbacks,
+    verbose=0,
+)
+
+# +
+from typing import Callable
+
+x_margin = 5
+n_x = 1000
+X_test = np.linspace(X.min() - x_margin, X.max() + x_margin, n_x).reshape(-1, 1)
+
+f_mean, f_var = dgp.predict_f(X_test)
+f_scale = np.sqrt(f_var)
+
+# Plot samples
+n_sim = 10
+for _ in range(n_sim):
+    # `sample_dgp` returns a callable - which we subsequently evaluate
+    f_sample: Callable[[tf.Tensor], tf.Tensor] = sample_dgp(dgp)
+    plt.plot(X_test, f_sample(X_test).numpy())
+
+# Plot GP mean and uncertainty intervals and data
+plt.plot(X_test, f_mean, "C0")
+plt.plot(X_test, f_mean + f_scale, "C0--")
+plt.plot(X_test, f_mean - f_scale, "C0--")
+plt.plot(X, Y, "kx", alpha=0.2)
+plt.xlim(X.min() - x_margin, X.max() + x_margin)
+plt.ylim(Y.min() - x_margin, Y.max() + x_margin)
+plt.show()

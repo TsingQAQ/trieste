@@ -152,7 +152,7 @@
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
-
+import tensorflow_probability as tfp
 import gpflow
 import gpflux
 
@@ -174,6 +174,207 @@ m = gpflow.models.GPR(data=(X, Y), kernel=k, mean_function=None)
 opt = gpflow.optimizers.Scipy()
 opt_logs = opt.minimize(m.training_loss, m.trainable_variables, options=dict(maxiter=100))
 
+# ### GPFlowExtra ver
+
+# Here we manually do the RFF by Mahimi
+
+# $$
+# k(X, X^\prime) \approx \sum_{i=1}^I \phi_i(X) \phi_i(X^\prime),
+# $$
+# with $I$ Fourier features $\phi_i$  following Rahimi and Recht "Random features for large-scale kernel machines" (NeurIPS, 2007) defined as
+
+# $$
+# \phi_i(X) = \sqrt{\frac{2 \sigma^2}{l}} \cos(\theta_i X + \tau_i),
+# $$
+# where $\sigma^2$ refers to the kernel variance and $l$ to the kernel lengthscale. $\theta_i$ and $\tau_i$ are randomly drawn hyperparameters that determine each feature function $\phi_i$. The hyperparameter $\theta_i$ is randomly drawn from the kernel's spectral density. The spectral density of a stationary kernel is obtained by interpreting the kernel as a function of one argument only (i.e. the distance between $X$ and $X^\prime$) and performing a Fourier transform on that function, resulting in an unnormalised probability density (from which samples can be obtained). The hyperparameter $\tau_i$ is obtained by sampling from a uniform distribution $\tau_i \sim \mathcal{U}(0,2\pi)$. Note that both $\theta_i$ and $\tau_i$ are fixed and not optimised over. An interesting direction of future research is how to automatically identify those (but this is outside the scope of this notebook). If we drew infinitely many samples, i.e. $I \rightarrow \infty$, we would recover the true kernel perfectly.
+
+# Below we show how the RFF can be conducted *manually*
+
+# +
+m_ftrs = 1000 # MC sample number of RFF (i.e.,  the features number)
+input_dim = 1
+
+l = np.array([np.atleast_1d(m.kernel.lengthscales.numpy())] * m_ftrs) # [m_ftrs, dim]
+
+W = np.divide(np.random.randn(m_ftrs, input_dim), l)
+
+# b \sim U[0, 2pi]
+# b = 2 * np.pi * np.random.uniform([0], [1], m_ftrs)
+b = 2 * np.pi * tfd.Uniform([0.0], [1.0], m_ftrs).sample(m_ftrs)
+
+# Fixedme: should be dynamic
+# b_for_nObservations = np.array([b, ] * self.Nxn).T # Nx * b
+# b_for_nObservations = np.array([b, ] * X.shape[0]).T # Nx * b
+b_for_nObservations = tf.tile(b, [1, X.shape[0]] ) # Nx * b
+
+kernel_var = m.kernel.variance.numpy()
+
+# \Phi with dimensions mxn: φ(x) = \sqrt(2a/m) cos(Wx + b)
+# FIXedME: change to scaled version
+vector_phi_T = np.sqrt(2 * kernel_var / m_ftrs) * \
+               np.cos(np.dot(W, X.T) + b_for_nObservations)
+
+alpha = m.kernel.variance.numpy()
+
+# \Phi with dimensions mxn: φ(x) = \sqrt(2a/m) cos(Wx + b)
+# FIXedME: change to scaled version
+# vector_phi_T = np.sqrt(2 * alpha / self.m_ftrs) * \
+#                      np.cos(np.dot(W, self.models[obj_id].X.value.T) + b_for_nObservations)
+vector_phi_T = np.sqrt(2 * alpha / m_ftrs) * \
+               np.cos(np.dot(W, X.T) + b_for_nObservations)
+# -
+
+# $$
+# p(\textbf{w} | \mathcal{D}) = \frac{\prod_{n=1}^N p(y_n| \textbf{w}^\intercal \boldsymbol{\phi}(X_n), \sigma_\epsilon^2) p(\textbf{w})}{p(\mathcal{D})},
+# $$
+# where we assume $p(\textbf{w})$ to be a standard normal multivariate prior and $p(y_n| \textbf{w}^\intercal \boldsymbol{\phi}(X_n), \sigma_\epsilon^2)$ to be a univariate Gaussian observation model of the i.i.d. likelihood with mean $\textbf{w}^\intercal \boldsymbol{\phi}(X_n)$ and noise variance $\sigma_\epsilon^2$. The boldface notation $\boldsymbol{\phi}(X_n)$ refers to the vector-valued feature function that evaluates all features from $1$ up to $I$ for one particular input $X_n$. Under these assumptions, the posterior $p(\textbf{w} | \mathcal{D})$ enjoys a closed form and is Gaussian. Predictions can readily be obtained by sampling $\textbf{w}$ and evaluating the function sample $\textbf{w}$ at new locations $\{X_{n^\star}^\star\}_{n^\star=1,...,N^\star}$ as $\{\textbf{w}^\intercal \boldsymbol{\phi}(X_{n^\star}^\star)\}_{n^\star=1,...,N^\star}$.
+
+# The posterior distribution of $p(\textbf{w})$ has been given as:
+
+# Hence we could sample from $p(\textbf{w})$ in order to sample the weighted spce approximated Gaussian Process posterior
+
+# +
+# φ(x)^T φ(x) + σ^2 I, n_ftrs * n_ftrs
+
+# A: φ(x)^T φ(x)/σ^2  + I
+A = np.divide(np.dot(vector_phi_T, vector_phi_T.T), m.likelihood.variance.numpy()) + np.eye(m_ftrs)
+
+# posterior of θ sample: θ|Dn ∼ N(A−1ΦTyn, σ2A−1), shape: (m_ftrs), shape checked correct
+A_inverse = tf.linalg.inv(A).numpy()
+
+# θ(A^{-1} φ(x)^T Y / σ^2, )
+mean_of_post_theta = np.divide(np.dot(np.dot(A_inverse, vector_phi_T), Y), m.likelihood.variance.numpy())
+mean_of_post_theta = np.squeeze(np.asarray(mean_of_post_theta))
+variance_of_post_theta = A_inverse
+
+# sample posterior
+def makeFunc(alpha, m_ftrs, W, b, theta):
+    """
+    :param alpha
+    :param m_ftrs
+    :param W
+    :param b
+    :param theta
+    """
+    return lambda x: np.dot(np.sqrt(2 * alpha / m_ftrs) * np.cos(np.dot(W, np.atleast_2d(x).T) + np.atleast_2d(b).T).T, theta)
+# sample_obj = lambda x: np.dot(np.sqrt(2 * alpha / self.m_ftrs) * np.cos(np.dot(W, np.atleast_2d(x).T) + np.atleast_2d(b).T).T, theta_sample)
+
+
+# +
+## generate test points for prediction
+xx = np.linspace(-0.1, 1.1, 100).reshape(100, 1)  # test points must be of shape (N, D)
+
+## predict mean and variance of latent GP at test points
+mean, var = m.predict_f(xx)
+
+## generate 10 samples from posterior
+tf.random.set_seed(1)  # for reproducibility
+samples = m.predict_f_samples(xx, 10)  # shape (10, 100, 1)
+
+    
+## plot
+plt.figure(figsize=(12, 6))
+plt.plot(X, Y, "kx", mew=2)
+plt.plot(xx, mean, "C0", lw=2)
+plt.fill_between(
+    xx[:, 0],
+    mean[:, 0] - 1.96 * np.sqrt(var[:, 0]),
+    mean[:, 0] + 1.96 * np.sqrt(var[:, 0]),
+    color="C0",
+    alpha=0.2,
+)
+
+for _ in range(100):
+    theta_sample = np.random.multivariate_normal(mean_of_post_theta, variance_of_post_theta)
+    f_sample = makeFunc(alpha, m_ftrs, W, b, theta_sample)
+    yy = f_sample(xx)
+    plt.plot(xx, yy, color="C1")
+
+
+plt.plot(xx, samples[:, :, 0].numpy().T, "C0", linewidth=0.5)
+_ = plt.xlim(-0.1, 1.1)
+
+# -
+
+# ### Gpflux
+
+# Test whether this two $\phi$ has similarity
+
+# ---------------------------
+
+# The sampled $\phi_i$ function in RFF can be obtained by `gpflux`'s `RandomFourierFeatures` functionality directly
+
+# +
+from typing import Callable
+
+num_rff = 1000
+features = RandomFourierFeatures(m.kernel, num_rff, dtype=X.dtype)
+# -
+
+# Get the distribution of weight: $\theta$
+
+# +
+from tensorflow_probability import distributions as tfd 
+
+Phi = features(tf.cast(X, dtype=tf.float64))
+# A_inv = tf.linalg.inv(tf.linalg.matmul(Phi, Phi, transpose_a=True) + 
+#                   tf.cast(m.likelihood.variance, dtype=tf.float64) * 
+#                   tf.eye(tf.shape(Phi)[1], dtype=tf.float64))
+
+# 这里是使用了GPFlowextra的版本: A_inv = [φ(x)^T φ(x)/σ^2 +  I]
+A_inv = tf.linalg.inv(
+    tf.linalg.matmul(vector_phi_T.T, vector_phi_T.T, transpose_a=True)/
+    tf.cast(m.likelihood.variance, dtype=tf.float64)  + 
+    tf.eye(tf.shape(vector_phi_T.T)[1], dtype=tf.float64))
+post_theta_mean = tf.matmul(tf.matmul(A_inv, vector_phi_T.T, transpose_b = True), Y)  / tf.cast(m.likelihood.variance, dtype=tf.float64)
+post_theta_cov = A_inv
+
+
+post_theta_sampler = tfd.MultivariateNormalFullCovariance(post_theta_mean, 
+                                                          post_theta_cov)
+
+def makeFunc(feature_func, theta):
+    return lambda x: tf.matmul(feature_func(x), theta)
+
+
+# +
+## generate test points for prediction
+xx = np.linspace(-0.1, 1.1, 100).reshape(100, 1)  # test points must be of shape (N, D)
+
+## predict mean and variance of latent GP at test points
+mean, var = m.predict_f(xx)
+
+## generate 10 samples from posterior
+tf.random.set_seed(1)  # for reproducibility
+samples = m.predict_f_samples(xx, 10)  # shape (10, 100, 1)
+
+    
+## plot
+plt.figure(figsize=(12, 6))
+plt.plot(X, Y, "kx", mew=2)
+plt.plot(xx, mean, "C0", lw=2)
+plt.fill_between(
+    xx[:, 0],
+    mean[:, 0] - 1.96 * np.sqrt(var[:, 0]),
+    mean[:, 0] + 1.96 * np.sqrt(var[:, 0]),
+    color="C0",
+    alpha=0.2,
+)
+
+for _ in range(10):
+    f_sample = makeFunc(features,  
+                        np.random.multivariate_normal(mean_of_post_theta, 
+                                                      variance_of_post_theta)[..., np.newaxis])
+    yy = f_sample(xx)
+    plt.plot(xx, yy, color="C1")
+
+plt.plot(xx, samples[:, :, 0].numpy().T, "C0", linewidth=0.5)
+_ = plt.xlim(-0.1, 1.1)
+
+# -
+
+# ### Approach 2
+
 # Approaximate the kernel with RFF
 
 # +
@@ -185,6 +386,30 @@ features = RandomFourierFeatures(kernel, num_rff, dtype=X.dtype)
 coefficients = tf.ones((num_rff, 1), dtype=X.dtype)
 kernel_with_features = KernelWithFeatureDecomposition(kernel, features, coefficients)
 
+
+# -
+
+# $$\textbf{f}^\star \approx \boldsymbol{\Phi}^\star \textbf{w} + \boldsymbol{\Phi}^\star \boldsymbol{\Phi}^\intercal(\boldsymbol{\Phi} \boldsymbol{\Phi}^\intercal + \sigma_\epsilon^2 \textbf{I})^{-1}(\textbf{y} - \boldsymbol{\Phi} \textbf{w}) \; \text{ where } \; \textbf{w} \sim \mathcal{N}(\textbf{0}, \textbf{I}),$$
+
+#
+# with $\boldsymbol{\Phi}$ referring to the $N \times D$ feature matrix evaluated at the training points $\{X_n\}_{n=1,...,N}$ and $\boldsymbol{\Phi}^\star$ to the $N^\star \times D$ feature matrix evaluated at the test points $\{X^\star_{n^\star}\}_{n^\star=1,...,N^\star}$. The quantities $\boldsymbol{\Phi}^\star \boldsymbol{\Phi}^\intercal$ and $\boldsymbol{\Phi} \boldsymbol{\Phi}^\intercal$ are weight space approximations of the exact kernel matrices $\textbf{K}_{\textbf{f}^\star \textbf{f}}$ and $\textbf{K}_{\textbf{f} \textbf{f}}$ respectively. The weight space Matheron representation enables you to sample more efficiently with a complexity of $\mathcal{O}(D)$ that scales only linearly with the number of feature functions $D$ (because the standard normal weight prior's diagonal covariance matrix can be linearly Cholesky decomposed). The problem is that many feature functions are required in order to approximate the exact posterior reasonably well in areas most relevant for extrapolation (i.e. close but not within the training data), as shown by Wilson et al. and as reproduced in another `gpflux` notebook.
+
+def rff_wsa_fsample(x, w):
+    Phi_star = features(x)
+    Phi = features(X)
+    a = tf.linalg.matmul(Phi_star, Phi, transpose_b=True)
+    b = tf.linalg.inv(tf.linalg.matmul(Phi, Phi, transpose_b=True))
+    c = Y - tf.matmul(Phi, w)
+    return tf.linalg.matmul(Phi_star, w) + tf.matmul(tf.matmul(a, b), c) 
+
+
+for _ in range(20):
+    w = tfp.distributions.Normal([[0]] * num_rff, [[1]] * num_rff).sample()
+    xx = np.linspace(-0.1, 1.0, 100).reshape(100, 1)  # test points must be of shape (N, D)
+    yy = rff_wsa_fsample(xx, tf.cast(w, dtype=tf.float64))
+    plt.plot(xx, yy, color="C1")
+
+# +
 # 这个inducing point  是啥啊
 Z = tf.gather(data, [0], axis=1)
 inducing_variable = gpflow.inducing_variables.InducingPoints(Z)
@@ -227,12 +452,17 @@ plt.fill_between(
 )
 
 for _ in range(10):
+    w = tfp.distributions.Normal([[0]] * num_rff, [[1]] * num_rff).sample()
+    xx = np.linspace(-0.1, 1.1, 100).reshape(100, 1)  # test points must be of shape (N, D)
+    yy = rff_wsa_fsample(xx, tf.cast(w, dtype=tf.float64))
+    plt.plot(xx, yy, color="C1")
     # `sample_dgp` returns a callable - which we subsequently evaluate
-    f_sample: Callable[[tf.Tensor], tf.Tensor] = sample_dgp(dgp)
-    plt.plot(xx, f_sample(xx).numpy(), color="C1")
+    # f_sample: Callable[[tf.Tensor], tf.Tensor] = sample_dgp(dgp)
+    # plt.plot(xx, f_sample(xx).numpy(), color="C1")
 
 plt.plot(xx, samples[:, :, 0].numpy().T, "C0", linewidth=0.5)
 _ = plt.xlim(-0.1, 1.1)
+
 # -
 
 # ------------------
@@ -271,7 +501,7 @@ kernel = gpflow.kernels.Matern52()
 Z = np.linspace(X.min(), X.max(), 10).reshape(-1, 1).astype(np.float64)
 
 inducing_variable = gpflow.inducing_variables.InducingPoints(Z)
-gpflow.utilities.set_trainable(inducing_variable, False)
+# gpflow.utilities.set_trainable(inducing_variable, False)
 
 num_rff = 10000
 eigenfunctions = RandomFourierFeatures(kernel, num_rff, dtype=default_float())

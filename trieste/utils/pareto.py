@@ -34,7 +34,7 @@ def non_dominated(observations: TensorType) -> tuple[TensorType, TensorType]:
 
 
     """
-    extended = tf.tile(observations[None], [len(observations), 1, 1])
+    extended = tf.tile(observations[None], [tf.shape(observations)[0], 1, 1])
     swapped_ext = tf.transpose(extended, [1, 0, 2])
     dominance = tf.math.count_nonzero(
         tf.logical_and(
@@ -192,7 +192,10 @@ class Pareto:
             return divide_conquer_cells_final, lower_result_final, upper_result_final
 
         _, lower_result_final, upper_result_final = tf.while_loop(
-            lambda divide_conquer_cells, lower_result, upper_result: len(divide_conquer_cells) > 0,
+            lambda divide_conquer_cells, lower_result, upper_result: tf.shape(divide_conquer_cells)[
+                0
+            ]
+            > 0,
             while_body,
             loop_vars=[divide_conquer_cells, lower_result, upper_result],
             shape_invariants=[
@@ -257,7 +260,12 @@ class Pareto:
         edge_size2 = int(edge_size - edge_size1)
 
         sparse_edge_size1 = tf.concat(
-            [tf.zeros([idx]), edge_size1 * tf.ones([1]), tf.zeros([len(cell[1]) - idx - 1])], axis=0
+            [
+                tf.zeros([idx]),
+                edge_size1 * tf.ones([1]),
+                tf.zeros([tf.shape(cell[1], out_type=idx.dtype)[0] - idx - 1]),
+            ],
+            axis=0,
         )
         upper = tf.identity(cell[1]) - tf.cast(sparse_edge_size1, dtype=tf.int32)
 
@@ -266,7 +274,12 @@ class Pareto:
         )
 
         sparse_edge_size2 = tf.concat(
-            [tf.zeros([idx]), edge_size2 * tf.ones([1]), tf.zeros([len(cell[1]) - idx - 1])], axis=0
+            [
+                tf.zeros([idx]),
+                edge_size2 * tf.ones([1]),
+                tf.zeros([tf.shape(cell[1], out_type=idx.dtype)[0] - idx - 1]),
+            ],
+            axis=0,
         )
         lower = tf.identity(cell[0]) + tf.cast(sparse_edge_size2, dtype=tf.int32)
 
@@ -327,34 +340,50 @@ class Pareto:
             Defines the lower bound of the hypercell
         :param reference: a reference point to use, with shape [D].
             Defines the upper bound of the hypervolume.
-            Should be equal to or bigger than the anti-ideal point of the Pareto set.
             For comparing results across runs, the same reference point must be used.
         :return: lower, upper bounds of the partitioned cell
         :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
             shape.
         """
-        tf.debugging.assert_greater_equal(reference, self.front)
+
         tf.debugging.assert_greater_equal(self.front, anti_reference)
         tf.debugging.assert_type(anti_reference, self.front.dtype)
         tf.debugging.assert_type(reference, self.front.dtype)
 
+        dominated_front_boolean_mask = tf.reduce_all(
+            tf.math.greater_equal(reference[None], self.front), axis=1
+        )
+
+        tf.debugging.assert_equal(
+            tf.reduce_any(dominated_front_boolean_mask), tf.constant(True)
+        ), ValueError(
+            "At least one observations in current front "
+            "need to dominate specified reference point but found none"
+        )
+        censored_pareto = Pareto(
+            tf.boolean_mask(self.front, tf.math.equal(dominated_front_boolean_mask, True))
+        )
+
         tf.debugging.assert_shapes(
             [
-                (self._bounds.lower_idx, ["N", "D"]),
-                (self._bounds.upper_idx, ["N", "D"]),
-                (self.front, ["M", "D"]),
+                (censored_pareto._bounds.lower_idx, ["N", "D"]),
+                (censored_pareto._bounds.upper_idx, ["N", "D"]),
+                (censored_pareto.front, ["M", "D"]),
                 (reference, ["D"]),
                 (anti_reference, ["D"]),
             ]
         )
 
-        pseudo_pfront = tf.concat((anti_reference[None], self.front, reference[None]), axis=0)
-        N = tf.shape(self._bounds.upper_idx)[0]
-        D = tf.shape(self._bounds.upper_idx)[1]
+        pseudo_pfront = tf.concat(
+            (anti_reference[None], censored_pareto.front, reference[None]), axis=0
+        )
+
+        N = tf.shape(censored_pareto._bounds.upper_idx)[0]
+        D = tf.shape(censored_pareto._bounds.upper_idx)[1]
         idx = tf.tile(tf.range(D), (N,))
 
-        lower_idx = tf.stack((tf.reshape(self._bounds.lower_idx, [-1]), idx), axis=1)
-        upper_idx = tf.stack((tf.reshape(self._bounds.upper_idx, [-1]), idx), axis=1)
+        lower_idx = tf.stack((tf.reshape(censored_pareto._bounds.lower_idx, [-1]), idx), axis=1)
+        upper_idx = tf.stack((tf.reshape(censored_pareto._bounds.upper_idx, [-1]), idx), axis=1)
 
         lower = tf.reshape(tf.gather_nd(pseudo_pfront, lower_idx), [N, D])
         upper = tf.reshape(tf.gather_nd(pseudo_pfront, upper_idx), [N, D])

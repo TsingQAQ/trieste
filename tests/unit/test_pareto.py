@@ -170,6 +170,15 @@ def test_pareto_hypervolume_indicator_raises_for_reference_below_anti_ideal_poin
             0.37,
         ),
         ([[2.0, 2.0, 0.0], [2.0, 0.0, 1.0], [3.0, 1.0, 0.0]], [4.0, 4.0, 4.0], 29.0),
+        # reference point does not dominate any of the pareto point
+        ([[2.0, 2.0, 0.0]], [1.0, 1.0, 2.0], 0.0),
+        ([[2.0, 0.0], [0.0, 2.0]], [0.0, 5.0], 0.0),
+        ([[2.0, 0.0], [0.0, 2.0]], [-1.0, -5.0], 0.0),
+        ([[2.0, 1.0, 0.0], [1.0, 1.0, 3.0], [0.0, 0.5, 4.0]], [0.0, 0.5, 5.0], 0.0),
+        # reference point dominated part of the pareto front
+        ([[2.0, 0.0], [0.0, 2.0]], [3.0, 1.0], 1.0),
+        ([[2.0, 0.0], [1.0, 5.0], [0.0, 10.0]], [3.0, 3.0], 3.0),
+        ([[2.0, 2.0, 0.0], [2.0, 0.0, 1.0], [3.0, 1.0, 0.0]], [3.0, 2.0, 2.0], 2.0),
     ],
 )
 def test_pareto_hypervolume_indicator(

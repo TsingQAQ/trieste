@@ -284,16 +284,11 @@ class Pareto:
 
         :param reference: a reference point to use, with shape [D].
             Defines the upper bound of the hypervolume.
-            Should be equal or bigger than the anti-ideal point of the Pareto set.
             For comparing results across runs, the same reference point must be used.
         :return: hypervolume indicator
         :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
             shape.
-        :raise `tf.errors.InvalidArgumentError`: If ``reference`` is less than the anti-ideal point
-            in any dimension.
         """
-        tf.debugging.assert_greater_equal(reference, self.front)
-
         tf.debugging.assert_shapes(
             [
                 (self._bounds.lower_idx, ["N", "D"]),
@@ -303,8 +298,8 @@ class Pareto:
             ]
         )
 
-        min_front = tf.reduce_min(self.front, 0, keepdims=True)
-        pseudo_front = tf.concat((min_front, self.front, reference[None]), 0)
+        min_point = tf.minimum(tf.reduce_min(self.front, 0, keepdims=True), reference[None])
+        pseudo_front = tf.concat((min_point, self.front, reference[None]), 0)
         N, D = tf.shape(self._bounds.upper_idx)
 
         idx = tf.tile(tf.expand_dims(tf.range(D), -1), [1, N])
@@ -315,10 +310,12 @@ class Pareto:
             tf.stack([tf.transpose(self._bounds.lower_idx), idx], axis=2), [N * D, 2]
         )
         upper = tf.reshape(tf.gather_nd(pseudo_front, upper_idx), [D, N])
+        upper = tf.minimum(upper, reference[..., None])
         lower = tf.reshape(tf.gather_nd(pseudo_front, lower_idx), [D, N])
+        lower = tf.minimum(lower, reference[..., None])
         hypervolume = tf.reduce_sum(tf.reduce_prod(upper - lower, 0))
 
-        return tf.reduce_prod(reference[None] - min_front) - hypervolume
+        return tf.reduce_prod(reference[None] - min_point) - hypervolume
 
     def hypercell_bounds(
         self, anti_reference: TensorType, reference: TensorType

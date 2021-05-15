@@ -290,8 +290,7 @@ def test_pareto_hypercell_bounds_raises_for_front_below_anti_reference_point(
             [0.1, -0.6],
             ([[-1.0, -0.7], [-1.0, -0.7], [-0.8, -0.7]], [[-1.0, -0.6], [-0.8, -0.6], [0.1, -0.7]]),
         ),
-        # reference point is below part of the pareto point
-        (
+        (  # reference point is below part of the pareto point
             [[1.0, 0.5], [0.0, 2.5]],
             [-10.0, -8.0],
             [2.0, 1.0],

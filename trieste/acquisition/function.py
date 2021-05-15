@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from itertools import combinations, product
+from itertools import product
 from math import inf
 from typing import Callable, Optional, Union
 
@@ -615,121 +615,6 @@ def expected_hv_improvement(
         )
 
     return acquisition
-
-
-class BatchMonteCarloExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
-    """
-    Builder for the batch expected hypervolume improvement acquisition function.
-    The implementation of the acquisition function largely
-    follows :cite:`:daulton2020differentiable`
-    """
-
-    def __init__(self, sample_size: int = 512, *, jitter: float = DEFAULTS.JITTER):
-        """
-        :param sample_size: The number of samples for each batch of points.
-        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
-            the covariance matrix.
-        :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive, or
-            ``jitter`` is negative.
-        """
-        tf.debugging.assert_positive(sample_size)
-        tf.debugging.assert_greater_equal(jitter, 0.0)
-
-        super().__init__()
-
-        self._sample_size = sample_size
-        self._jitter = jitter
-        self.q = -1
-
-    def __repr__(self) -> str:
-        """"""
-        return (
-            f"BatchMonteCarloHypervolumeExpectedImprovement({self._sample_size!r},"
-            f" jitter={self._jitter!r})"
-        )
-
-    def _cache_q_subset_indices(self, q: int) -> None:
-        r"""Cache indices corresponding to all subsets of `q`.
-        This means that consecutive calls to `forward` with the same
-        `q` will not recompute the indices for all (2^q - 1) subsets.
-        Note: this will use more memory than regenerating the indices
-        for each i and then deleting them, but it will be faster for
-        repeated evaluations (e.g. during optimization).
-        :param q: batch size
-        """
-        if q != self.q:  # regenerate subset indices
-            indices = list(range(q))
-            self.q_subset_indices = {
-                f"q_choose_{i}": tf.constant(list(combinations(indices, i)))
-                for i in range(1, q + 1)
-            }
-            self.q = q
-
-    def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
-    ) -> AcquisitionFunction:
-        """
-        :param dataset: The data from the observer. Must be populated.
-        :param model: The model over the specified ``dataset``. Must have event shape [1].
-        :return: The batch *expected improvement* acquisition function.
-        """
-
-        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
-        mean, _ = model.predict(dataset.query_points)
-
-        _pf = Pareto(mean)
-        _reference_pt = get_reference_point(_pf.front)
-
-        lb_points, ub_points = _pf.hypercell_bounds(
-            tf.constant([-inf] * mean.shape[-1], dtype=mean.dtype), _reference_pt
-        )
-        sampler = BatchReparametrizationSampler(self._sample_size, model)
-
-        def batch_hvei(at: TensorType) -> TensorType:
-            """
-            :param at: Batches of query points at which to sample the predictive distribution, with
-            shape `[..., B, D]`.
-            """
-
-            # [..., S, B, num_obj]
-            samples = sampler.sample(at, jitter=self._jitter)
-
-            q = at.shape[-2]  # B
-            self._cache_q_subset_indices(q)
-
-            hv_contrib = 0.0
-
-            def hv_contrib_on_samples(obj_samples: TensorType) -> TensorType:
-                # [..., S, Cq_j, j, num_obj] -> [..., S, Cq_j, num_obj]
-                overlap_vertices = tf.reduce_max(obj_samples, axis=-2)
-
-                overlap_vertices = (
-                    tf.maximum(  # compare overlap vertices and lower bound of each cell:
-                        tf.expand_dims(overlap_vertices, -3),  # expand a cell dimension
-                        lb_points[tf.newaxis, tf.newaxis, :, tf.newaxis, :],
-                    )
-                )  # [..., S, K, Cq_j, num_obj]
-
-                lengths_j = tf.maximum(  # get hvi length per obj within each cell
-                    (ub_points[tf.newaxis, tf.newaxis, :, tf.newaxis, :] - overlap_vertices), 0.0
-                )  # [..., S, K, Cq_j, num_obj]
-
-                areas_j = tf.reduce_sum(  # sum over all subsets Cq_j -> [..., S, K]
-                    tf.reduce_prod(lengths_j, axis=-1), axis=-1  # calc hvi within each K
-                )
-
-                return tf.reduce_sum(areas_j, axis=-1)  # sum over cells -> [..., S]
-
-            for j in range(1, q + 1):  # Inclusion-Exclusion loop
-                q_choose_j = self.q_subset_indices[f"q_choose_{j}"]
-                j_sub_samples = tf.gather(
-                    samples, q_choose_j, axis=-2
-                )  # [..., S, Cq_j, j, num_obj]
-                hv_contrib += (-1) ** (j + 1) * hv_contrib_on_samples(j_sub_samples)
-
-            return tf.reduce_mean(hv_contrib, axis=-1, keepdims=True)  # average through MC
-
-        return batch_hvei
 
 
 class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):

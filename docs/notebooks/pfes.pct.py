@@ -153,6 +153,7 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import tensorflow_probability as tfp
+from tensorflow_probability import distributions as tfd
 import gpflow
 import gpflux
 
@@ -190,38 +191,159 @@ opt_logs = opt.minimize(m.training_loss, m.trainable_variables, options=dict(max
 
 # Below we show how the RFF can be conducted *manually*
 
+# --------------
+
+# ## GPFlowExtra Version
+
+# $$
+# k_{unit}(X, X^\prime) \approx \frac{1}{D}\sum_{i=1}^D z_{{\omega}_i}(X) z_{{\omega}_i}(X^\prime),
+# $$
+# with $D$ Fourier features $\phi_i$  following Rahimi and Recht "Random features for large-scale kernel machines" (NeurIPS, 2007) defined as
+
+# $$
+# z_{\omega_i}(X) = \sqrt{2} \cos(\omega_i' X + b_i),
+# $$
+
+# By considering scaling coefficient (i.e., output scaling: kernel variance $\sigma^2$ and input scaling: kernel lengthscale $l$), the augmented kernel could be represented by RFF as:
+
+# \begin{equation}
+# \begin{aligned}
+# k(X, X^\prime) &\approx \frac{\sigma^2}{D}\sum_{i=1}^D z_{{\omega}_i}(X/l) z_{{\omega}_i}(X^\prime/l) \\& =  \sum_{i=1}^D z_{{\omega}_i}'(X) z_{{\omega}_i}'(X^\prime)
+# \end{aligned}
+# \end{equation}
+
+# Where $z_{{\omega}_i}'$ is defined as:
+
+# $$
+# z_{\omega_i}'(X) = \sqrt{\frac{2\sigma^2}{D}} \cos(\omega' (diag(l)^{-1} X) + b_i)
+# $$
+
+# We begin with setting of feature number:
+
+D = 1000
+
 # +
-m_ftrs = 1000 # MC sample number of RFF (i.e.,  the features number)
-input_dim = 1
+scaler_l = 1/np.diag(np.atleast_1d(m.kernel.lengthscales.numpy())) # [feature num, input dim]
+
+omega = np.random.randn(D, X.shape[1]) # [feature num, input dim]
+
+b = 2 * np.pi * np.random.uniform(0, 1, D) # b \sim U[0, 2pi]
+
+b_for_nObservations = np.array([b, ] * X.shape[0]).T  # Nx * b
+
+sigma2 = m.kernel.variance.numpy()
+
+# z(x) = \sqrt(2a/m) cos(Wx + b)
+vector_Z_T = np.sqrt(2 * sigma2 / D) * np.cos(np.matmul(omega, np.matmul(scaler_l, X.T)) + b_for_nObservations)
+# -
+
+# Given the RFF approximation (a.k.a, `vector_z_T`), we seek a parametric form of the GP posterior, which has been discussed by Lobato [1] as follows:
+# "The feature mapping $\Phi(x)$ allows us to approximate the Gaussian process prior for $f$ with a linear model $f(x) = \phi(x)^T\theta$ where $\theta ∼ \mathcal{N}(0, I)$ is a standard Gaussian. By conditioning on $D_n$, the posterior for $\theta$ is also multivariate
+# Gaussian, $\theta|D_n ∼ N(A^{-1}\Phi^T y_n, \sigma_{le}^2 A^{−1})$ where $A = \Phi^T\Phi+ \sigma_{le}^2I$ and $\Phi^T = [\Phi(x_1) . . . \Phi(x_n)]$
+# "
+#
+# Note: 
+# 1. The $\Phi^T = [\Phi(x_1) . . . \Phi(x_n)]$ is the same as `vector_Z_T` here
+# 2. $\sigma_{le}^2$ represents the likelihood variance
+
+# +
+sigma_le_2 = m.likelihood.variance.numpy()
+# A: φ(x)^T φ(x)  + σ_{le}^2I
+A = np.dot(vector_Z_T, vector_Z_T.T) + sigma_le_2 * np.eye(D)
+
+# posterior of θ sample: θ|Dn ∼ N(A−1ΦTyn, σ2A−1), shape: (m_ftrs), shape checked correct
+A_inverse = tf.linalg.inv(A).numpy()
+
+# θ(A^{-1} φ(x)^T Y )
+mean_of_post_theta = np.dot(np.dot(A_inverse, vector_Z_T), Y)
+mean_of_post_theta = np.squeeze(np.asarray(mean_of_post_theta))
+variance_of_post_theta = sigma_le_2 * A_inverse
+
+theta_sample = np.random.multivariate_normal(mean_of_post_theta, variance_of_post_theta)
+
+
+def makeFunc(kernel_var, m_ftrs, W, b, theta):
+    """
+    :param kernel_var kernel variance
+    :param m_ftrs RFF features, a.k.a value of D
+    :param W spectral density sample
+    :param b uniform sample from [0, 2pi]
+    
+    return a sampled approximated posterior trajectory of GP
+    """
+    return lambda x: np.dot(np.sqrt(2 * kernel_var / D) * np.cos(np.dot(omega, np.matmul(scaler_l, np.atleast_2d(x).T)) 
+                                                            + np.atleast_2d(b).T).T, theta)
+
+
+# -
+
+# Let's take a comparison between GP posterior sample in functional space and the sample from WSA + RFF
+
+# +
+## generate test points for prediction
+xx = np.linspace(-0.1, 1.1, 100).reshape(100, 1)  # test points must be of shape (N, D)
+
+## predict mean and variance of latent GP at test points
+mean, var = m.predict_f(xx)
+
+## generate 10 samples from posterior
+tf.random.set_seed(1)  # for reproducibility
+samples = m.predict_f_samples(xx, 10)  # shape (10, 100, 1)
+
+    
+## plot
+plt.figure(figsize=(12, 6))
+plt.plot(X, Y, "kx", mew=2)
+plt.plot(xx, mean, "C0", lw=2)
+plt.fill_between(
+    xx[:, 0],
+    mean[:, 0] - 1.96 * np.sqrt(var[:, 0]),
+    mean[:, 0] + 1.96 * np.sqrt(var[:, 0]),
+    color="C0",
+    alpha=0.2,
+)
+
+for _ in range(100):
+    theta_sample = np.random.multivariate_normal(mean_of_post_theta, variance_of_post_theta)
+    f_sample = makeFunc(sigma2, D, omega, b, theta_sample)
+    yy = f_sample(xx)
+    plt.plot(xx, yy, color="C1")
+
+
+plt.plot(xx, samples[:, :, 0].numpy().T, "C0", linewidth=0.5)
+_ = plt.xlim(-0.1, 1.1)
+
+# -
+
+# --------------
+
+# ## Updated Version (Compatible to TF)
+
+# +
+m_ftrs = 1000
+input_dim = X.shape[1]
 
 l = np.array([np.atleast_1d(m.kernel.lengthscales.numpy())] * m_ftrs) # [m_ftrs, dim]
+# 这一步真的看不懂, W 应该是一个 m_ftrs * input_dim的
+W = np.divide(np.random.randn(m_ftrs, input_dim), l) # [m_ftrs, dim]
 
-W = np.divide(np.random.randn(m_ftrs, input_dim), l)
-
-# b \sim U[0, 2pi]
-# b = 2 * np.pi * np.random.uniform([0], [1], m_ftrs)
-b = 2 * np.pi * tfd.Uniform([0.0], [1.0], m_ftrs).sample(m_ftrs)
-
+# b ~ U[0, 2pi]
+b = 2 * np.pi * np.random.uniform(0, 1, m_ftrs) # a.k.a, θ for spectral density, normal is the density of RBF kernel
 # Fixedme: should be dynamic
-# b_for_nObservations = np.array([b, ] * self.Nxn).T # Nx * b
-# b_for_nObservations = np.array([b, ] * X.shape[0]).T # Nx * b
-b_for_nObservations = tf.tile(b, [1, X.shape[0]] ) # Nx * b
+# b_for_nObservations = np.array([b, ] * Nxn).T # Nx * b
+b_for_nObservations = np.array([b, ] * X.shape[0]).T  # Nx * b
 
 kernel_var = m.kernel.variance.numpy()
 
 # \Phi with dimensions mxn: φ(x) = \sqrt(2a/m) cos(Wx + b)
 # FIXedME: change to scaled version
+# vector_phi_T = np.sqrt(2 * alpha / m_ftrs) * \
+#                      np.cos(np.dot(W, models[obj_id].X.value.T) + b_for_nObservations)
 vector_phi_T = np.sqrt(2 * kernel_var / m_ftrs) * \
                np.cos(np.dot(W, X.T) + b_for_nObservations)
 
-alpha = m.kernel.variance.numpy()
 
-# \Phi with dimensions mxn: φ(x) = \sqrt(2a/m) cos(Wx + b)
-# FIXedME: change to scaled version
-# vector_phi_T = np.sqrt(2 * alpha / self.m_ftrs) * \
-#                      np.cos(np.dot(W, self.models[obj_id].X.value.T) + b_for_nObservations)
-vector_phi_T = np.sqrt(2 * alpha / m_ftrs) * \
-               np.cos(np.dot(W, X.T) + b_for_nObservations)
+
 # -
 
 # $$
@@ -234,8 +356,6 @@ vector_phi_T = np.sqrt(2 * alpha / m_ftrs) * \
 # Hence we could sample from $p(\textbf{w})$ in order to sample the weighted spce approximated Gaussian Process posterior
 
 # +
-# φ(x)^T φ(x) + σ^2 I, n_ftrs * n_ftrs
-
 # A: φ(x)^T φ(x)/σ^2  + I
 A = np.divide(np.dot(vector_phi_T, vector_phi_T.T), m.likelihood.variance.numpy()) + np.eye(m_ftrs)
 
@@ -247,7 +367,9 @@ mean_of_post_theta = np.divide(np.dot(np.dot(A_inverse, vector_phi_T), Y), m.lik
 mean_of_post_theta = np.squeeze(np.asarray(mean_of_post_theta))
 variance_of_post_theta = A_inverse
 
-# sample posterior
+theta_sample = np.random.multivariate_normal(mean_of_post_theta, variance_of_post_theta)
+
+
 def makeFunc(alpha, m_ftrs, W, b, theta):
     """
     :param alpha
@@ -256,8 +378,8 @@ def makeFunc(alpha, m_ftrs, W, b, theta):
     :param b
     :param theta
     """
-    return lambda x: np.dot(np.sqrt(2 * alpha / m_ftrs) * np.cos(np.dot(W, np.atleast_2d(x).T) + np.atleast_2d(b).T).T, theta)
-# sample_obj = lambda x: np.dot(np.sqrt(2 * alpha / self.m_ftrs) * np.cos(np.dot(W, np.atleast_2d(x).T) + np.atleast_2d(b).T).T, theta_sample)
+    return lambda x: np.dot(np.sqrt(2 * alpha / m_ftrs) * np.cos(np.dot(W, np.atleast_2d(x).T) + np.atleast_2d(b).T).T,
+                            theta)
 
 
 # +
@@ -286,7 +408,7 @@ plt.fill_between(
 
 for _ in range(100):
     theta_sample = np.random.multivariate_normal(mean_of_post_theta, variance_of_post_theta)
-    f_sample = makeFunc(alpha, m_ftrs, W, b, theta_sample)
+    f_sample = makeFunc(kernel_var, m_ftrs, W, b, theta_sample)
     yy = f_sample(xx)
     plt.plot(xx, yy, color="C1")
 

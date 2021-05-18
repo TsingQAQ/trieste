@@ -150,6 +150,8 @@
 
 # ## 1D case
 
+# ### Numpy Version
+
 # +
 import numpy as np
 import tensorflow as tf
@@ -313,9 +315,52 @@ _ = plt.xlim(-0.1, 1.1)
 
 # -
 
+# ### Implemented TF version
+
+# +
+from trieste.utils.parametric_gp_posterior import gen_approx_posterior_through_rff_wsa, rff_approx_of_rbf_kernel
+
+f_samples = gen_approx_posterior_through_rff_wsa(m, 100)
+
+# +
+## generate test points for prediction
+xx = np.linspace(-0.1, 1.1, 100).reshape(100, 1)  # test points must be of shape (N, D)
+
+## predict mean and variance of latent GP at test points
+mean, var = m.predict_f(xx)
+
+## generate 10 samples from posterior
+tf.random.set_seed(1)  # for reproducibility
+samples = m.predict_f_samples(xx, 10)  # shape (10, 100, 1)
+
+    
+## plot
+plt.figure(figsize=(12, 6))
+plt.plot(X, Y, "kx", mew=2)
+plt.plot(xx, mean, "C0", lw=2)
+plt.fill_between(
+    xx[:, 0],
+    mean[:, 0] - 1.96 * np.sqrt(var[:, 0]),
+    mean[:, 0] + 1.96 * np.sqrt(var[:, 0]),
+    color="C0",
+    alpha=0.2,
+)
+
+for _ in range(100):
+    yy = f_samples[_](xx)
+    plt.plot(xx, yy, color="C1")
+
+
+plt.plot(xx, samples[:, :, 0].numpy().T, "C0", linewidth=0.5)
+_ = plt.xlim(-0.1, 1.1)
+
+# -
+
 # --------------
 
 # ## 2D case
+
+# ### Numpy Case
 
 # +
 import numpy as np
@@ -398,3 +443,18 @@ for _ in range(3):
     theta_sample = np.random.multivariate_normal(mean_of_post_theta, variance_of_post_theta)
     f_sample = makeFunc(sigma2, D, omega, b, theta_sample)
     plot_function_2d(f_sample, [0.0, 0.0], [1.0, 1.0])
+
+# ### Implemented TF version
+
+# +
+from trieste.utils.parametric_gp_posterior import gen_approx_posterior_through_rff_wsa, rff_approx_of_rbf_kernel
+
+f_samples = gen_approx_posterior_through_rff_wsa(m_2d, 5)
+# -
+
+for _ in range(3):
+    plot_function_2d(f_samples[_], [0.0, 0.0], [1.0, 1.0])
+
+# # MESMO
+
+# # PFES

@@ -646,37 +646,6 @@ class ParetoFrontierEntropySearch(SingleModelAcquisitionBuilder):
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
 
-        def pf_sample_through_parameteric_approx_gp_posterior(gp_rff_samples, seed):
-            # TODO: define an mo strategy
-            raise NotImplementedError
-
-        def build_approx_posterior_through_rff(data, model) -> tf.keras.Model:
-            """
-            Build Parametric approximation model posterior trajectory through RFF
-            """
-            var = tf.math.reduce_variance(data.observations)
-            kernel = model.kernel
-            # get kernel feature by using RFF
-            num_rff = 10000
-            features = RandomFourierFeatures(kernel, num_rff, dtype=var.dtype)
-            coefficients = tf.ones((num_rff, 1), dtype=var.dtype)
-            # approx kernel with feature
-            kernel_with_features = KernelWithFeatureDecomposition(kernel, features, coefficients)
-            # build a parametric model for optimization
-            layer = gpflux.layers.GPLayer(
-                kernel_with_features,
-                inducing_variable,
-                num_data,
-                whiten=False,
-                num_latent_gps=1,
-                mean_function=gpflow.mean_functions.Zero(),
-            )
-            likelihood = gpflow.likelihoods.Gaussian(1e-5)
-            gpflow.utilities.set_trainable(likelihood, False)
-            likelihood_layer = gpflux.layers.LikelihoodLayer(likelihood)
-            model = gpflux.models.DeepGP([layer], likelihood_layer)
-            return model
-
         paretos = []
         for i in range(self._num_samples):
             paretos.append(pf_sample_through_rff(seed=i))

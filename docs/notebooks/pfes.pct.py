@@ -455,6 +455,47 @@ f_samples = gen_approx_posterior_through_rff_wsa(m_2d, 5)
 for _ in range(3):
     plot_function_2d(f_samples[_], [0.0, 0.0], [1.0, 1.0])
 
+# # Sample PF 
+
+# +
+import tensorflow as tf
+import matplotlib.pyplot as plt
+import tensorflow_probability as tfp
+from tensorflow_probability import distributions as tfd
+import gpflow
+from trieste.space import Box
+from trieste.utils.objectives import branin
+from trieste.models import ModelStack
+from trieste.utils.mo_utils import find_pareto_front_from_sampled_gp_posterior
+
+
+tf.random.set_seed(100)
+tf.keras.backend.set_floatx("float64")
+
+Xs_samples = Box([0.0, 0.0], [1.0, 1.0]).sample(23)
+X = Xs_samples
+Y = branin(X)
+k = gpflow.kernels.RBF(lengthscales=[1.0, 1.0])
+m_2d = gpflow.models.GPR(data=(X, Y), kernel=k, mean_function=None)
+opt = gpflow.optimizers.Scipy()
+opt_logs = opt.minimize(m_2d.training_loss, m_2d.trainable_variables, options=dict(maxiter=100))
+m_2d2 = gpflow.models.GPR(data=(X, -Y), kernel=k, mean_function=None)
+opt = gpflow.optimizers.Scipy()
+opt_logs = opt.minimize(m_2d2.training_loss, m_2d2.trainable_variables, options=dict(maxiter=100))
+
+
+
+m_stack = ModelStack((m_2d, 1), (m_2d2, 1))
+f_samples = find_pareto_front_from_sampled_gp_posterior(m_stack, 5, Box([0.0, 0.0], [1.0, 1.0]), popsize=30)
+# -
+
+for i, res in zip(range(len(f_samples)), f_samples):
+    plt.scatter(res.F[:, 0], res.F[:, 1], label=f'PF sample {i}')
+plt.xlabel('Objective1')
+plt.ylabel('Objective2')
+plt.title('PF samples on parametric GP posterior')
+plt.legend()
+
 # # MESMO
 
 # # PFES

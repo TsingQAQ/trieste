@@ -22,10 +22,12 @@ from collections.abc import Mapping
 from itertools import product
 from math import inf
 from typing import Callable, Optional
-import gpflux
 
+import gpflux
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflux.layers.basis_functions.random_fourier_features import RandomFourierFeatures
+from gpflux.sampling.kernel_with_feature_decomposition import KernelWithFeatureDecomposition
 
 from ..data import Dataset
 from ..models import ProbabilisticModel
@@ -34,8 +36,6 @@ from ..type import TensorType
 from ..utils import DEFAULTS
 from ..utils.pareto import Pareto, get_reference_point
 from .sampler import BatchReparametrizationSampler, GumbelSampler
-from gpflux.layers.basis_functions.random_fourier_features import RandomFourierFeatures
-from gpflux.sampling.kernel_with_feature_decomposition import KernelWithFeatureDecomposition
 
 AcquisitionFunction = Callable[[TensorType], TensorType]
 """
@@ -626,6 +626,7 @@ class ParetoFrontierEntropySearch(SingleModelAcquisitionBuilder):
     The implementation of the acquisition function largely
     follows :cite:`None`
     """
+
     def __init__(self, num_samples: int = 5):
         if num_samples <= 0:
             raise ValueError(f"num_samples must be positive, got {num_samples}")
@@ -657,9 +658,10 @@ class ParetoFrontierEntropySearch(SingleModelAcquisitionBuilder):
 
 
 def pareto_frontier_entropy_search(
-        model: ProbabilisticModel,
-        pareto: Pareto,
-        reference_point: TensorType,):
+    model: ProbabilisticModel,
+    pareto: Pareto,
+    reference_point: TensorType,
+):
     pass
 
 

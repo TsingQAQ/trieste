@@ -5,6 +5,7 @@ import tensorflow as tf
 from tensorflow_probability import distributions as tfd
 
 from trieste.type import TensorType
+from ..models.model_interfaces import ProbabilisticModel
 
 
 def rff_approx_of_rbf_kernel(

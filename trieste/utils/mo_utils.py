@@ -13,7 +13,8 @@ from trieste.type import TensorType
 from .parametric_gp_posterior import gen_approx_posterior_through_rff_wsa
 
 
-def find_pareto_front_from_sampled_gp_posterior(
+# TODO: Currently only support ARD kernel
+def sample_pareto_fronts_from_parametric_gp_posterior(
     gp_model: ModelStack,
     sample_pf_num: int,
     search_space,
@@ -29,7 +30,7 @@ def find_pareto_front_from_sampled_gp_posterior(
     """
     gp_post_samples = []
     for obj_model in gp_model._models:  # gen rff_wsa sample for each obj
-        gp_post_samples.append(gen_approx_posterior_through_rff_wsa(obj_model, sample_pf_num))
+        gp_post_samples.append(gen_approx_posterior_through_rff_wsa(obj_model.model, sample_pf_num))
 
     pf_samples = []
     for i in range(sample_pf_num):  # calculate pf
@@ -44,7 +45,7 @@ def find_pareto_front_from_sampled_gp_posterior(
                 (search_space.lower, search_space.upper),
                 popsize,
                 num_generation=num_moo_iter,
-            )
+            ).F
         )
     return pf_samples
 

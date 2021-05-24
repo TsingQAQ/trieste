@@ -20,20 +20,18 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from itertools import product
-from math import inf
+from math import e, inf, pi
 from typing import Callable, Optional
 
-import gpflux
 import tensorflow as tf
 import tensorflow_probability as tfp
-from gpflux.layers.basis_functions.random_fourier_features import RandomFourierFeatures
-from gpflux.sampling.kernel_with_feature_decomposition import KernelWithFeatureDecomposition
 
 from ..data import Dataset
-from ..models import ProbabilisticModel
+from ..models import ModelStack, ProbabilisticModel
 from ..space import SearchSpace
 from ..type import TensorType
 from ..utils import DEFAULTS
+from ..utils.mo_utils import sample_pareto_fronts_from_parametric_gp_posterior
 from ..utils.pareto import Pareto, get_reference_point
 from .sampler import BatchReparametrizationSampler, GumbelSampler
 
@@ -620,24 +618,27 @@ def expected_hv_improvement(
     return acquisition
 
 
-class ParetoFrontierEntropySearch(SingleModelAcquisitionBuilder):
+class MESMO(SingleModelAcquisitionBuilder):
     """
-    Builder for the pareto frontier entropy search acquisition function.
-    The implementation of the acquisition function largely
-    follows :cite:`None`
+        Builder for the maximum entropy search for multi objective optimization acquisition function.
+        The implementation of the acquisition function largely
+        follows :cite:`belakaria2019max`
     """
 
-    def __init__(self, num_samples: int = 5):
-        if num_samples <= 0:
-            raise ValueError(f"num_samples must be positive, got {num_samples}")
-        self._num_samples = num_samples
+    def __init__(self, search_space: SearchSpace, num_pf_samples: int = 2, popsize: int = 50, moo_iter: int = 100):
+        if num_pf_samples <= 0:
+            raise ValueError(f"num_samples must be positive, got {num_pf_samples}")
+        self._num_pf_samples = num_pf_samples
+        self._search_space = search_space
+        self._popsize = popsize
+        self._moo_iter = moo_iter
 
     def __repr__(self) -> str:
         """"""
         return "ParetoFrontierEntropySearch()"
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+            self, dataset: Dataset, model: ModelStack
     ) -> AcquisitionFunction:
         """
         :param dataset: The data from the observer. Must be populated.
@@ -647,22 +648,133 @@ class ParetoFrontierEntropySearch(SingleModelAcquisitionBuilder):
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
 
-        paretos = []
-        for i in range(self._num_samples):
-            paretos.append(pf_sample_through_rff(seed=i))
+        obj_wise_max_samples = []
+        pf_samples = sample_pareto_fronts_from_parametric_gp_posterior(
+            model, self._num_pf_samples, self._search_space, popsize=self._popsize,
+            num_moo_iter=self._moo_iter
+        )
+        for pf_sample in pf_samples:
+            # TODO:
+            obj_wise_max_samples.append()
 
-        # TODO
-        _neg_pf = Pareto(-mean)
-        _reference_pt = get_reference_point(_neg_pf.front)
-        return pareto_frontier_entropy_search(model, _neg_pf, _reference_pt)
+        return maximum_entropy_search_multi_objective(model, obj_wise_max_samples)
+
+
+def maximum_entropy_search_multi_objective(model, obj_wise_max_samples):
+    raise NotImplementedError
+
+
+class ParetoFrontierEntropySearch(SingleModelAcquisitionBuilder):
+    """
+    Builder for the pareto frontier entropy search acquisition function.
+    The implementation of the acquisition function largely
+    follows :cite:`None`
+    """
+
+    def __init__(self, search_space: SearchSpace, num_pf_samples: int = 2, popsize: int = 50, moo_iter: int = 100):
+        if num_pf_samples <= 0:
+            raise ValueError(f"num_samples must be positive, got {num_pf_samples}")
+        self._num_pf_samples = num_pf_samples
+        self._search_space = search_space
+        self._popsize = popsize
+        self._moo_iter = moo_iter
+
+    def __repr__(self) -> str:
+        """"""
+        return "ParetoFrontierEntropySearch()"
+
+    def prepare_acquisition_function(
+        self, dataset: Dataset, model: ModelStack
+    ) -> AcquisitionFunction:
+        """
+        :param dataset: The data from the observer. Must be populated.
+        :param model: The model over the specified ``dataset``.
+        :return: The pareto frontier entropy search acquisition function.
+        """
+        tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
+        mean, _ = model.predict(dataset.query_points)
+
+        pf_samples = sample_pareto_fronts_from_parametric_gp_posterior(
+            model, self._num_pf_samples, self._search_space, popsize=self._popsize,
+            num_moo_iter=self._moo_iter
+        )
+        _neg_reference_pt = []
+
+        # for pf_sample in pf_samples:
+        #     _neg_reference_pt.append(get_reference_point(-pf_sample))
+        return pareto_frontier_entropy_search(model, pf_samples)
 
 
 def pareto_frontier_entropy_search(
     model: ProbabilisticModel,
-    pareto: Pareto,
-    reference_point: TensorType,
+    paretos: list[TensorType],
 ):
-    pass
+    """
+    :param paretos
+    :param model
+    :param reference_points
+    """
+    tf.debugging.assert_shapes([(paretos, ["pf_sample_size", "popsize", "output_dim"])])
+
+    def acquisition(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, ["Batch_dim", 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
+        # tf.debugging.assert_equal(len(reference_points), len(paretos))
+
+        normal = tfp.distributions.Normal(tf.cast(0, x.dtype), tf.cast(1, x.dtype))
+        fmean, fvar = model.predict(tf.squeeze(x, -2))
+        L = fmean.shape[-1]  # obj num
+        tf.clip_by_value(fvar, 1.0e-8, fmean.dtype.max)  # clip below to improve numerical stability
+        unconstraint_h = 1 / 2 * tf.math.log((tf.cast(2 * pi * e , dtype=x.dtype) ** L) *
+                                             tf.reduce_prod(fvar, axis=-1, keepdims=True))    # [Batch_dim, None]
+        fsd = tf.math.sqrt(fvar)
+
+        constraint_h = tf.zeros(
+            shape=(x.shape[0], 1), dtype=x.dtype
+        )  # [Batch_dim, min_samples, 1]
+
+        def box_entropy(mean, std, lower_bound, upper_bound) -> TensorType:
+            """
+            :param: mean: [Batch_dim, 1, ...]
+            :param: std: [Batch_dim, 1, ...]
+            :param: lower_bound: [N, L]
+            :param: upper_bound: [N, L]
+
+            return
+            """
+            alpha_u = (upper_bound - mean) / std  # [B, N, L]
+            alpha_l = (lower_bound - mean) / std  # [B, N, L]
+            z_ml = normal.cdf(alpha_u) - normal.cdf(alpha_l)  # [B, N, L]
+            z_ml = tf.math.maximum(z_ml, 1e-20)
+            z_m = tf.reduce_prod(z_ml, axis=-1)  # [B, N]
+            z = tf.reduce_sum(z_m, axis=-1, keepdims=True)  # B
+            alpha_u = tf.clip_by_value(alpha_u, alpha_u.dtype.min, alpha_u.dtype.max)
+            alpha_l = tf.clip_by_value(alpha_u, alpha_l.dtype.min, alpha_l.dtype.max)
+            gamma_ml = (alpha_u * normal.prob(alpha_u) - alpha_l * normal.prob(alpha_l)) / (2 * z_ml)  # [B, N, L]
+            return tf.math.log(
+                tf.cast(tf.sqrt(2 * pi * e) ** L, dtype=tf.float64) * z * tf.reduce_prod(std, axis=-1)
+            ) + tf.reduce_sum(z_m / z * tf.reduce_sum(gamma_ml, axis=-1), axis=-1, keepdims=True)
+
+        # pareto class is not yet supported batch, we have to hence rely on a loop
+        for pareto in paretos:
+            _neg_pareto = - pareto  # partition the dominated region
+            helper_lb_points, helper_ub_points = Pareto(_neg_pareto).hypercell_bounds(
+                -tf.constant([inf] * x.shape[-1], dtype=x.dtype), tf.reduce_max(_neg_pareto, axis=0),
+            )
+            cons_h = box_entropy(  # inverse the helper to be lower and upper
+                tf.expand_dims(fmean, 1), tf.expand_dims(fsd, 1), - helper_ub_points, - helper_lb_points
+            )
+            constraint_h = tf.concat([constraint_h, cons_h], axis=1)
+
+        # FIXME?: Have negative value
+        # FIXME?: gradient of acq can have nan issue
+        # tf.print(f"unconstraint_h: {unconstraint_h}")
+        # tf.print(f"constraint_h: {tf.math.reduce_mean(constraint_h[..., 1:], axis=1, keepdims=True)}")
+        return unconstraint_h - tf.math.reduce_mean(constraint_h[..., 1:], axis=1, keepdims=True)
+
+    return acquisition
 
 
 class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):

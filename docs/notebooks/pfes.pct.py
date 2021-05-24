@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
+# %% [markdown]
 # # Parallel Pareto Frontier Entropy Search
 
+# %% [markdown]
 # ## Related Work
 
+# %% [markdown]
 # - [MESMO](https://par.nsf.gov/servlets/purl/10145801) paper, NIPS 2019, Belakaria et al
 # - [PFES](http://proceedings.mlr.press/v119/suzuki20a.html), ICML 2020, Shinya Suzuki et al
 #
@@ -17,33 +20,43 @@
 # Uncatogrized
 # - [iMOCA](https://arxiv.org/pdf/2009.05700.pdf) paper, NIPS 2020 Workshop, Belakaria et al
 
+# %% [markdown]
 # -----------
 
+# %% [markdown]
 # ## Main
 
+# %% [markdown]
 # \begin{equation}
 # \begin{aligned}
 # \alpha(x) &= H[PF\vert D] - \mathbb{E}_{f_x}H[PF \vert D, \{x, \boldsymbol{f}_x\}] \\& = H[\boldsymbol{f}_x\vert D] - \mathbb{E}_{PF}H[\boldsymbol{f}_x \vert D, x, PF]
 # \end{aligned}
 # \end{equation}
 
+# %% [markdown]
 # MESMO approximation:
 
+# %% [markdown]
 # \begin{equation}
 # H[\boldsymbol{f}_x \vert D, x, PF] \approx \sum_{j=1}^K H[y^j \vert D, x, max\{z_1^j, ..., z_m^j\}]
 # \end{equation}
 
+# %% [markdown]
 # Where $\{z_1,..., z_m\}$ are sampled pareto front points
 
+# %% [markdown]
 # ---------------
 
+# %% [markdown]
 # Recall the definition of acquisition function in PFES paper [1]:
 # \begin{equation}
 # \alpha(\boldsymbol{x}) = H[p(\boldsymbol{f}_x) \vert D] - \frac{1}{|PF|} \Sigma_{\mathcal{F^*}\in PF} H[p(\boldsymbol{f}_x \vert D, \boldsymbol{f}_x \prec \mathcal{F^*})] \tag{1}
 # \end{equation}
 
+# %% [markdown]
 # Where $\mathcal{F^*}$ denotes the sampled pareto pront as a discrete approximation of pareto frontier. 
 
+# %% [markdown]
 # $p(\boldsymbol{f}_x \vert D, \boldsymbol{f}_x \prec \mathcal{F^*})$ can be rewritten as:  
 #
 # \begin{equation}
@@ -56,6 +69,7 @@
 # \end{equation}  
 # Where $Z = \int_\mathcal{F} p(\boldsymbol{f}_x) d\boldsymbol{f}_x$ is the normalization constant, $\mathcal{F}$ is defined as the dominated objective space.
 
+# %% [markdown]
 # Assume the dominated space can been partitioned into $M$ cells, with statistical independence (for simplicity derivation, might not necessary) assumption on different obj, we have:  
 # \begin{equation}
 # \begin{aligned}
@@ -69,12 +83,16 @@
 #
 # where $u_m^i$, $l_m^i$ denotes the upper and lower bound of cell $m$ at dimension $i$. 
 
+# %% [markdown]
 # -------
 
+# %% [markdown]
 # ### Deriviation of the differential entropy based on conditional distribution 
 
+# %% [markdown]
 # Thorem 3.1 of PFES paper reveals the calculation of $H[p(\boldsymbol{f}_x \vert D, \boldsymbol{f}_x \prec \mathcal{F^*})]$ for a single query points:
 
+# %% [markdown]
 # \begin{equation}
 # \begin{aligned}
 # H[p(\boldsymbol{f}_x \vert D, \boldsymbol{f}_x \prec \mathcal{F^*})] &= - \int_\mathcal{F}  \frac{p(\boldsymbol{f}_x \vert D)}{Z} log \frac{p(\boldsymbol{f}_x \vert D)}{Z} d \boldsymbol{f}_x
@@ -82,8 +100,10 @@
 # \end{aligned} \tag{5}
 # \end{equation}
 
+# %% [markdown]
 # Define auxilary random variable (truncated normal)  $\boldsymbol{h}_{x_{\mathcal{F}_m}} := \boldsymbol{f}_{x} \cdot I\{\boldsymbol{f}_{x} \in \mathcal{F}_m\}$, then:
 
+# %% [markdown]
 # \begin{equation}
 # p(\boldsymbol{h}_{x_{\mathcal{F}_m}}) = \left\{
 # \begin{aligned}
@@ -93,6 +113,7 @@
 # \right.
 # \end{equation}
 
+# %% [markdown]
 # Then we could write its differential entropy as:
 # \begin{equation}
 # \begin{aligned}
@@ -104,55 +125,72 @@
 # \int_{\mathcal{F}_m} p(\boldsymbol{f}_x \vert D)log p(\boldsymbol{f}_x \vert D)d\boldsymbol{f}_x = Z_mlog Z_m - Z_m\mathbb{H}[\boldsymbol{h}_{x_{\mathcal{F}_m}}]  \tag{8}
 # \end{equation}
 
+# %% [markdown]
 # We plug in $\boldsymbol{h}_x$ into the original differential entropy expression, i.e., substitute Eq. 8 into Eq. 5:
 
+# %% [markdown]
 # \begin{equation}
 # \begin{aligned}
 # \mathbb{H}[p(\boldsymbol{f}_x \vert D, \boldsymbol{f}_x \prec \mathcal{F^*})] &= -  \frac{1}{Z} \sum_{m=1}^M \int_{\mathcal{F}_m}p(\boldsymbol{f}_x \vert D) log p(\boldsymbol{f}_x \vert D) d \boldsymbol{f}_x + log Z \\ &=   -  \frac{1}{Z} \sum_{m=1}^M \left[ Z_mlog Z_m - Z_m\mathbb{H}[\boldsymbol{h}_{x_{\mathcal{F}_m}}]  \right]+ log Z 
 # \end{aligned}\tag{9}
 # \end{equation}
 
+# %% [markdown]
 # Where $M$ denotes the partitioned cell total number 
 
+# %% [markdown]
 # ----------------------
 
+# %% [markdown]
 # ### Single Query Point Case (PFES):
 
+# %% [markdown]
 # \begin{equation}
 # \begin{aligned}
 # H[p(\boldsymbol{f}_x \vert D, \boldsymbol{f}_x \prec \mathcal{F^*})] & =  -  \frac{1}{Z} \sum_{m=1}^M \left[ Z_mlog Z_m - Z_m\mathbb{H}[\boldsymbol{h}_{x_{\mathcal{F}_m}}]  \right]+ log Z  \\ & = - \frac{1}{Z} \sum_{m=1}^M \left[ Z_mlog Z_m  + Z_m\int_{l1}^{u1}\int_{l2}^{u2}...\int_{lL}^{uL} p(\boldsymbol{h}_x)logp(\boldsymbol{h}_x)d\boldsymbol{h}_x\right] + log Z\\ & = - \frac{1}{Z} \sum_{m=1}^M \left[ Z_mlog Z_m  + Z_m \int_{l1}^{u1}\int_{l2}^{u2}...\int_{lL}^{uL} \prod_{i=1}^L p(\boldsymbol{h}_{x_i}) \sum_{i=1}^L logp(\boldsymbol{h}_{x_i})d\boldsymbol{h}_x\right] + log Z\\ & = - \frac{1}{Z} \sum_{m=1}^M \left[ Z_m log Z_m   - Z_m \sum_{i=1}^L \left(  \int_{lj}^{uj}\prod_{j\neq i}^{L}p(\boldsymbol{h}_{x_j}) d\boldsymbol{h}_{x_j}\cdot \underbrace{- \int_{li}^{ui}  p(\boldsymbol{h}_{x_i}) log p(\boldsymbol{h}_{x_i})d\boldsymbol{h}_{x_i}}_{\text{entropy of 1d truncated normal}}\right) \right] + log Z\\ & = - \frac{1}{Z} \sum_{m=1}^M \left[ Z_m log Z_m  - Z_m \sum_{i=1}^L \underbrace{\left(log(\sqrt{2 \pi e}\sigma_i Z_{mi}) + \frac{l_i \phi(l_i) - u_i \phi(u_i)}{2Z_{mi}} \right)}_{\text{1d truncated differential entropy}}  \right]+ log Z \\ & = - \frac{1}{Z} \sum_{m=1}^M \left[ Z_m log Z_m  - Z_m \sum_{i=1}^L log(\sqrt{2 \pi e}\sigma_i Z_{mi})  - Z_m \sum_{i=1}^L \frac{l_i \phi(l_i) - u_i \phi(u_i)}{2Z_{mi}} \right]+ log Z \\&=   \sum_{m=1}^M \left[ \frac{Z_m}{Z} \sum_{i=1}^L \frac{l_i \phi(l_i) - u_i \phi(u_i)}{2Z_{mi}} \right]+ log Z - \frac{1}{Z} \sum_{m=1}^M \left[ Z_m log Z_m  - Z_m log({2 \pi e}^\frac{L}{2} Z_m \prod_{i=1}^L \sigma_i )  \right] \\& = \sum_{m=1}^M \left[ \frac{Z_m}{Z} \sum_{i=1}^L \frac{l_i \phi(l_i) - u_i \phi(u_i)}{2Z_{mi}} \right]+ log Z + \frac{1}{Z} \sum_{m=1}^M \left[ Z_m  log ({2 \pi e})^\frac{L}{2} \prod_{i=1}^L \sigma_i  \right] \\& = \sum_{m=1}^M \left[ \frac{Z_m}{Z} \sum_{i=1}^L \frac{l_i \phi(l_i) - u_i \phi(u_i)}{2Z_{mi}} \right]+  log ({2 \pi e})^\frac{L}{2} Z \prod_{i=1}^L \sigma_i 
 # \end{aligned} \tag{10}
 # \end{equation}
 
+# %% [markdown]
 # Where $L$ denotes the objective numbers, $Z_{mi} = \Phi(\frac{u_m^i - \mu_i(x)}{\sigma_i(x)}) - \Phi(\frac{l_m^i - \mu_i(x)}{\sigma_i(x)})$
 
+# %% [markdown]
 # ------------------
 
+# %% [markdown]
 # ### Batch Case by GIBBON
 
+# %% [markdown]
 # In the most simple case, we assume noise free and single fidelity condition. i.e., $C_i$ = $A_i$. 
 
+# %% [markdown]
 # \begin{equation}
 # \begin{aligned}
 # & H[p(\boldsymbol{f}_\boldsymbol{x} \vert D, \boldsymbol{f}_\boldsymbol{x} \prec \mathcal{F^*})] \\ & = -  \frac{1}{Z} \sum_{m=1}^M \left[ Z_mlog Z_m - Z_m\mathbb{H}[\boldsymbol{h}_{x_{\mathcal{F}_m}}]  \right]+ log Z \quad  (Eq. 9)\\& = -  \frac{1}{Z} \sum_{m=1}^M \left[ Z_mlog Z_m - Z_m \sum_{i=1}^L \mathbb{H}[\boldsymbol{f}_{\boldsymbol{x}}^i \vert \boldsymbol{f}_{\boldsymbol{x}}^i \in \mathcal{F}_m^i]  \right]+ log Z \\& = -  \frac{1}{Z} \sum_{m=1}^M (Z_mlog Z_m)+ log Z + \frac{Z_m}{Z}\sum_{m=1}^M \sum_{i=1}^L \mathbb{H}[\boldsymbol{f}_{\boldsymbol{x}}^i \vert \boldsymbol{f}_{\boldsymbol{x}}^i \in \mathcal{F}_m^i] \\ & \\ &\leq -  \frac{1}{Z} \sum_{m=1}^M (Z_mlog Z_m)+ log Z + \frac{Z_m}{Z}\sum_{m=1}^M \sum_{i=1}^L \sum_{j=1}^B \mathbb{H}[\boldsymbol{f}_{x_j}^i \vert \boldsymbol{f}_{\boldsymbol{x}}^i \in \mathcal{F}_m^i]  \quad{\text{information-theoretic inequality}}\\ & = -  \frac{1}{Z} \sum_{m=1}^M (Z_mlog Z_m)+ log Z + \frac{Z_m}{Z}\sum_{m=1}^M \sum_{i=1}^L \sum_{j=1}^B \mathbb{H}[\boldsymbol{f}_{x_j}^i \vert \boldsymbol{f}_{x_j}^i \in \mathcal{F}_m^i]  \quad {\text{conditional independence}} 
 # \end{aligned}\tag{11}
 # \end{equation}
 
+# %% [markdown]
 # -------
 
+# %% [markdown]
 # ## Plan
 # - Implement PFES
 # - Add GIBBON to evaluate the Batch Performance
 
+# %% [markdown]
 # -----------------
 
+# %% [markdown]
 # # Sample GP Posterior in Weight space approximation by RFF
 
+# %% [markdown]
 # ## 1D case
 
+# %% [markdown]
 # ### Numpy Version
 
-# +
+# %%
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
@@ -169,8 +207,8 @@ from gpflux.models.deep_gp import sample_dgp
 
 
 tf.keras.backend.set_floatx("float64")
-# -
 
+# %%
 data = np.genfromtxt("util/data/regression_1D.csv", delimiter=",")
 X = data[:, 0].reshape(-1, 1)
 Y = data[:, 1].reshape(-1, 1)
@@ -179,50 +217,63 @@ m = gpflow.models.GPR(data=(X, Y), kernel=k, mean_function=None)
 opt = gpflow.optimizers.Scipy()
 opt_logs = opt.minimize(m.training_loss, m.trainable_variables, options=dict(maxiter=100))
 
+# %% [markdown]
 # Here we manually do the RFF by Mahimi
 
+# %% [markdown]
 # $$
 # k(X, X^\prime) \approx \sum_{i=1}^I \phi_i(X) \phi_i(X^\prime),
 # $$
 # with $I$ Fourier features $\phi_i$  following Rahimi and Recht "Random features for large-scale kernel machines" (NeurIPS, 2007) defined as
 
+# %% [markdown]
 # $$
 # \phi_i(X) = \sqrt{\frac{2 \sigma^2}{l}} \cos(\theta_i X + \tau_i),
 # $$
 # where $\sigma^2$ refers to the kernel variance and $l$ to the kernel lengthscale. $\theta_i$ and $\tau_i$ are randomly drawn hyperparameters that determine each feature function $\phi_i$. The hyperparameter $\theta_i$ is randomly drawn from the kernel's spectral density. The spectral density of a stationary kernel is obtained by interpreting the kernel as a function of one argument only (i.e. the distance between $X$ and $X^\prime$) and performing a Fourier transform on that function, resulting in an unnormalised probability density (from which samples can be obtained). The hyperparameter $\tau_i$ is obtained by sampling from a uniform distribution $\tau_i \sim \mathcal{U}(0,2\pi)$. Note that both $\theta_i$ and $\tau_i$ are fixed and not optimised over. An interesting direction of future research is how to automatically identify those (but this is outside the scope of this notebook). If we drew infinitely many samples, i.e. $I \rightarrow \infty$, we would recover the true kernel perfectly.
 
+# %% [markdown]
 # Below we show how the RFF can be conducted *manually*
 
+# %% [markdown]
 # --------------
 
+# %% [markdown]
 # $$
 # k_{unit}(X, X^\prime) \approx \frac{1}{D}\sum_{i=1}^D z_{{\omega}_i}(X) z_{{\omega}_i}(X^\prime),
 # $$
 # with $D$ Fourier features $\phi_i$  following Rahimi and Recht "Random features for large-scale kernel machines" (NeurIPS, 2007) defined as
 
+# %% [markdown]
 # $$
 # z_{\omega_i}(X) = \sqrt{2} \cos(\omega_i' X + b_i),
 # $$
 
+# %% [markdown]
 # By considering scaling coefficient (i.e., output scaling: kernel variance $\sigma^2$ and input scaling: kernel lengthscale $l$), the augmented kernel could be represented by RFF as:
 
+# %% [markdown]
 # \begin{equation}
 # \begin{aligned}
 # k(X, X^\prime) &\approx \frac{\sigma^2}{D}\sum_{i=1}^D z_{{\omega}_i}(X/l) z_{{\omega}_i}(X^\prime/l) \\& =  \sum_{i=1}^D z_{{\omega}_i}'(X) z_{{\omega}_i}'(X^\prime)
 # \end{aligned}
 # \end{equation}
 
+# %% [markdown]
 # Where $z_{{\omega}_i}'$ is defined as:
 
+# %% [markdown]
 # $$
 # z_{\omega_i}'(X) = \sqrt{\frac{2\sigma^2}{D}} \cos(\omega' (diag(l)^{-1} X) + b_i)
 # $$
 
+# %% [markdown]
 # We begin with setting of feature number:
 
+# %%
 D = 1000
 
-# +
+# %%
 scaler_l = 1/np.diag(np.atleast_1d(m.kernel.lengthscales.numpy())) # [feature num, input dim]
 
 omega = np.random.randn(D, X.shape[1]) # [feature num, input dim]
@@ -235,8 +286,8 @@ sigma2 = m.kernel.variance.numpy()
 
 # z(x) = \sqrt(2a/m) cos(Wx + b)
 vector_Z_T = np.sqrt(2 * sigma2 / D) * np.cos(np.matmul(omega, np.matmul(scaler_l, X.T)) + b_for_nObservations)
-# -
 
+# %% [markdown]
 # Given the RFF approximation (a.k.a, `vector_z_T`), we seek a parametric form of the GP posterior, which has been discussed by Lobato [1] as follows:
 # "The feature mapping $\Phi(x)$ allows us to approximate the Gaussian process prior for $f$ with a linear model $f(x) = \phi(x)^T\theta$ where $\theta ∼ \mathcal{N}(0, I)$ is a standard Gaussian. By conditioning on $D_n$, the posterior for $\theta$ is also multivariate
 # Gaussian, $\theta|D_n ∼ N(A^{-1}\Phi^T y_n, \sigma_{le}^2 A^{−1})$ where $A = \Phi^T\Phi+ \sigma_{le}^2I$ and $\Phi^T = [\Phi(x_1) . . . \Phi(x_n)]$
@@ -246,7 +297,7 @@ vector_Z_T = np.sqrt(2 * sigma2 / D) * np.cos(np.matmul(omega, np.matmul(scaler_
 # 1. The $\Phi^T = [\Phi(x_1) . . . \Phi(x_n)]$ is the same as `vector_Z_T` here
 # 2. $\sigma_{le}^2$ represents the likelihood variance
 
-# +
+# %%
 sigma_le_2 = m.likelihood.variance.numpy()
 # A: φ(x)^T φ(x)  + σ_{le}^2I
 A = np.dot(vector_Z_T, vector_Z_T.T) + sigma_le_2 * np.eye(D)
@@ -275,11 +326,10 @@ def makeFunc(kernel_var, m_ftrs, W, b, theta):
                                                             + np.atleast_2d(b).T).T, theta)
 
 
-# -
-
+# %% [markdown]
 # Let's take a comparison between GP posterior sample in functional space and the sample from WSA + RFF
 
-# +
+# %%
 ## generate test points for prediction
 xx = np.linspace(-0.1, 1.1, 100).reshape(100, 1)  # test points must be of shape (N, D)
 
@@ -313,16 +363,16 @@ for _ in range(100):
 plt.plot(xx, samples[:, :, 0].numpy().T, "C0", linewidth=0.5)
 _ = plt.xlim(-0.1, 1.1)
 
-# -
 
+# %% [markdown]
 # ### Implemented TF version
 
-# +
+# %%
 from trieste.utils.parametric_gp_posterior import gen_approx_posterior_through_rff_wsa, rff_approx_of_rbf_kernel
 
 f_samples = gen_approx_posterior_through_rff_wsa(m, 100)
 
-# +
+# %%
 ## generate test points for prediction
 xx = np.linspace(-0.1, 1.1, 100).reshape(100, 1)  # test points must be of shape (N, D)
 
@@ -354,15 +404,17 @@ for _ in range(100):
 plt.plot(xx, samples[:, :, 0].numpy().T, "C0", linewidth=0.5)
 _ = plt.xlim(-0.1, 1.1)
 
-# -
 
+# %% [markdown]
 # --------------
 
+# %% [markdown]
 # ## 2D case
 
+# %% [markdown]
 # ### Numpy Case
 
-# +
+# %%
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
@@ -376,9 +428,9 @@ import gpflow
 
 
 tf.keras.backend.set_floatx("float64")
-# -
 
-Xs_samples = Box([0.0, 0.0], [1.0, 1.0]).sample(23)
+# %%
+Xs_samples = Box([0.0, 0.0], [1.0, 1.0]).sample(22)
 X = Xs_samples
 Y = branin(X)
 k = gpflow.kernels.RBF(lengthscales=[1.0, 1.0])
@@ -386,15 +438,19 @@ m_2d = gpflow.models.GPR(data=(X, Y), kernel=k, mean_function=None)
 opt = gpflow.optimizers.Scipy()
 opt_logs = opt.minimize(m_2d.training_loss, m_2d.trainable_variables, options=dict(maxiter=100))
 
+# %%
 m_2d
 
+# %%
 plot_gp_2d(m_2d,[0.0, 0.0], [1.0, 1.0])
 
+# %% [markdown]
 # -------------------------
 
+# %%
 D = 1000
 
-# +
+# %%
 scaler_l = np.diag(1/np.atleast_1d(m_2d.kernel.lengthscales.numpy())) # [feature num, input dim]
 
 omega = np.random.randn(D, X.shape[1]) # [feature num, input dim]
@@ -408,7 +464,7 @@ sigma2 = m_2d.kernel.variance.numpy()
 # z(x) = \sqrt(2a/m) cos(Wx + b)
 vector_Z_T = np.sqrt(2 * sigma2 / D) * np.cos(np.matmul(omega, np.matmul(scaler_l, tf.transpose(X))) + b_for_nObservations)
 
-# +
+# %%
 sigma_le_2 = m_2d.likelihood.variance.numpy()
 # A: φ(x)^T φ(x)  + σ_{le}^2I
 A = np.dot(vector_Z_T, vector_Z_T.T) + sigma_le_2 * np.eye(D)
@@ -437,27 +493,28 @@ def makeFunc(kernel_var, m_ftrs, W, b, theta):
                                                             + np.atleast_2d(b).T).T, theta)
 
 
-# -
-
+# %%
 for _ in range(3):
     theta_sample = np.random.multivariate_normal(mean_of_post_theta, variance_of_post_theta)
     f_sample = makeFunc(sigma2, D, omega, b, theta_sample)
     plot_function_2d(f_sample, [0.0, 0.0], [1.0, 1.0])
 
+# %% [markdown]
 # ### Implemented TF version
 
-# +
+# %%
 from trieste.utils.parametric_gp_posterior import gen_approx_posterior_through_rff_wsa, rff_approx_of_rbf_kernel
 
 f_samples = gen_approx_posterior_through_rff_wsa(m_2d, 5)
-# -
 
+# %%
 for _ in range(3):
     plot_function_2d(f_samples[_], [0.0, 0.0], [1.0, 1.0])
 
+# %% [markdown]
 # # Sample PF 
 
-# +
+# %%
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import tensorflow_probability as tfp
@@ -466,7 +523,7 @@ import gpflow
 from trieste.space import Box
 from trieste.utils.objectives import branin
 from trieste.models import ModelStack
-from trieste.utils.mo_utils import find_pareto_front_from_sampled_gp_posterior
+from trieste.utils.mo_utils import sample_pareto_fronts_from_parametric_gp_posterior
 
 
 tf.random.set_seed(100)
@@ -486,9 +543,9 @@ opt_logs = opt.minimize(m_2d2.training_loss, m_2d2.trainable_variables, options=
 
 
 m_stack = ModelStack((m_2d, 1), (m_2d2, 1))
-f_samples = find_pareto_front_from_sampled_gp_posterior(m_stack, 5, Box([0.0, 0.0], [1.0, 1.0]), popsize=30)
-# -
+f_samples = sample_pareto_fronts_from_parametric_gp_posterior(m_stack, 5, Box([0.0, 0.0], [1.0, 1.0]), popsize=30)
 
+# %%
 for i, res in zip(range(len(f_samples)), f_samples):
     plt.scatter(res.F[:, 0], res.F[:, 1], label=f'PF sample {i}')
 plt.xlabel('Objective1')
@@ -496,6 +553,192 @@ plt.ylabel('Objective2')
 plt.title('PF samples on parametric GP posterior')
 plt.legend()
 
+# %% [markdown]
 # # MESMO
 
+# %% [markdown]
 # # PFES
+
+# %%
+import math
+import gpflow
+import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow as tf
+from util.plotting import plot_bo_points, plot_function_2d, plot_mobo_history, plot_mobo_points_in_obj_space
+
+# %%
+import trieste
+from trieste.acquisition.function import ParetoFrontierEntropySearch
+from trieste.acquisition.rule import OBJECTIVE
+from trieste.data import Dataset
+from trieste.models import create_model
+from trieste.models.model_interfaces import ModelStack
+from trieste.space import Box
+from trieste.utils.multi_objectives import VLMOP2
+from trieste.utils.pareto import Pareto, get_reference_point
+from trieste.acquisition.rule import EfficientGlobalOptimization
+
+np.random.seed(1793)
+tf.random.set_seed(1793)
+
+# %%
+vlmop2 = VLMOP2().objective()
+observer = trieste.utils.objectives.mk_observer(vlmop2, OBJECTIVE)
+
+mins = [-2, -2]
+maxs = [2, 2]
+search_space = Box(mins, maxs)
+num_objective = 2
+
+# %% [markdown]
+# Let's randomly sample some initial data from the observer ...
+
+# %%
+num_initial_points = 20
+initial_query_points = search_space.sample(num_initial_points)
+initial_data = observer(initial_query_points)
+
+# %% [markdown]
+# ... and visualise the data across the design space: each figure contains the contour lines of each objective function.
+
+# %%
+_, ax = plot_function_2d(
+    vlmop2,
+    mins,
+    maxs,
+    grid_density=100,
+    contour=True,
+    title=["Obj 1", "Obj 2"],
+    figsize=(12, 6),
+    colorbar=True,
+    xlabel="$X_1$",
+    ylabel="$X_2$",
+)
+plot_bo_points(initial_query_points, ax=ax[0, 0], num_init=num_initial_points)
+plot_bo_points(initial_query_points, ax=ax[0, 1], num_init=num_initial_points)
+plt.show()
+
+# %% [markdown]
+# ... and in the objective space. The `plot_mobo_points_in_obj_space` will automatically search for non-dominated points and colours them in purple.
+
+# %%
+plot_mobo_points_in_obj_space(initial_data[OBJECTIVE].observations)
+plt.show()
+
+
+# %% [markdown]
+# ## Modelling the two functions
+
+
+# %%
+def build_stacked_independent_objectives_model(data: Dataset, num_output) -> ModelStack:
+        gprs =[]
+        for idx in range(num_output):
+            single_obj_data = Dataset(data.query_points, tf.gather(data.observations, [idx], axis=1))
+            variance = tf.math.reduce_variance(single_obj_data.observations)
+            kernel = gpflow.kernels.Matern52(variance, lengthscales=[1.0] * 2) 
+            jitter = gpflow.kernels.White(1e-12)
+            gpr = gpflow.models.GPR((single_obj_data.query_points, single_obj_data.observations), kernel, noise_variance=1e-5)
+            gpflow.utilities.set_trainable(gpr.likelihood, False)
+            gprs.append((create_model({
+            "model": gpr,
+            "optimizer": gpflow.optimizers.Scipy(),
+            "optimizer_args": {
+            "minimize_args": {"options": dict(maxiter=100)}}}), 1))
+
+        return ModelStack(*gprs)
+
+
+# %%
+models = {OBJECTIVE: build_stacked_independent_objectives_model(initial_data[OBJECTIVE], num_objective)}
+
+# %% [markdown]
+# ## Define the acquisition function
+# Here we utilize the [EHVI](https://link.springer.com/article/10.1007/s10898-019-00798-7): `ExpectedHypervolumeImprovement` acquisition function:
+
+# %%
+pfes = ParetoFrontierEntropySearch(search_space)
+rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(builder=pfes.using(OBJECTIVE))
+
+# %% [markdown]
+# ## Run the optimization loop
+#
+# We can now run the optimization loop
+
+# %%
+num_steps = 30
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
+
+# %% [markdown]
+# To conclude, we visualize the queried data across the design space.
+# We represent the initial points as crosses and the points obtained by our optimization loop as dots.
+
+# %%
+datasets = result.try_get_final_datasets()
+data_query_points = datasets[OBJECTIVE].query_points
+data_observations = datasets[OBJECTIVE].observations
+
+_, ax = plot_function_2d(
+    vlmop2,
+    mins,
+    maxs,
+    grid_density=100,
+    contour=True,
+    figsize=(12, 6),
+    title=["Obj 1", "Obj 2"],
+    xlabel="$X_1$",
+    ylabel="$X_2$",
+    colorbar=True,
+)
+plot_bo_points(data_query_points, ax=ax[0, 0], num_init=num_initial_points)
+plot_bo_points(data_query_points, ax=ax[0, 1], num_init=num_initial_points)
+plt.show()
+
+# %% [markdown]
+# Visualize in objective space. Purple dots denote the non-dominated points.
+
+# %%
+plot_mobo_points_in_obj_space(data_observations, num_init=num_initial_points)
+plt.show()
+
+# %% [markdown]
+# We can also visualize how a performance metric evolved with respect to the number of BO iterations.
+# First, we need to define a performance metric. Many metrics have been considered for multi-objective optimization. Here, we use the log hypervolume difference, defined as the difference between the hypervolume of the actual Pareto front and the hypervolume of the approximate Pareto front based on the bo-obtained data.
+
+# %% [markdown]
+#
+# $$
+# log_{10}\ \text{HV}_{\text{diff}} = log_{10}(\text{HV}_{\text{actual}} - \text{HV}_{\text{bo-obtained}})
+# $$
+#
+
+# %% [markdown]
+# First we need to calculate the $\text{HV}_{\text{actual}}$ based on the actual Pareto front. For some multi-objective synthetic functions like VLMOP2, the actual Pareto front has a clear definition, thus we could use `gen_pareto_optimal_points` to near uniformly sample on the actual Pareto front. And use these generated Pareto optimal points to (approximately) calculate the hypervolume of the actual Pareto frontier:
+
+# %%
+actual_pf = VLMOP2().gen_pareto_optimal_points(100)  # gen 100 pf points
+ref_point = get_reference_point(data_observations)
+idea_hv = Pareto(tf.cast(actual_pf, dtype=data_observations.dtype)).hypervolume_indicator(ref_point)
+
+
+# %% [markdown]
+# Then we define the metric function:
+
+
+# %%
+def log_hv(observations):
+    obs_hv = Pareto(observations).hypervolume_indicator(ref_point)
+    return math.log10(idea_hv - obs_hv)
+
+
+# %% [markdown]
+# Finally, we can plot the convergence of our performance metric over the course of the optimization.
+# The blue vertical line in the figure denotes the time after which BO starts.
+
+# %%
+fig, ax = plot_mobo_history(data_observations, log_hv, num_init=num_initial_points)
+ax.set_xlabel("Iterations")
+ax.set_ylabel("log HV difference")
+plt.show()

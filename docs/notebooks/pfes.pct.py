@@ -694,8 +694,8 @@ plt.legend()
 # Here we utilize the [MESMO](https://link.springer.com/article/10.1007/s10898-019-00798-7): `MESMO` acquisition function:
 
 # %%
-pfes = MESMO(search_space, num_pf_samples=3)
-rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(builder=pfes.using(OBJECTIVE))
+mesmo = MESMO(search_space, num_pf_samples=3)
+rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(builder=mesmo.using(OBJECTIVE))
 
 # %% [markdown]
 # ## Run the optimization loop

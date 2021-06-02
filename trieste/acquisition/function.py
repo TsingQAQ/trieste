@@ -674,7 +674,7 @@ def maximum_entropy_search_multi_objective(model: ModelStack, obj_wise_min_sampl
         fmean, fvar = model.predict(tf.squeeze(x, -2))
 
         fsd = tf.clip_by_value(tf.math.sqrt(fvar), 1e-100, 1e100)  # clip below to improve numerical stability
-        unconditial_h = tf.reduce_sum(tf.cast((1 + tf.math.log(2 * pi)), dtype=x.dtype) / 2 + tf.math.log(fsd), axis=-1)
+        unconditial_h = tf.reduce_sum(tf.cast((1 + tf.math.log(2 * pi)), dtype=x.dtype) / 2 + tf.math.log(fsd), axis=-1, keepdims=True)
         constraint_h = tf.zeros(
             shape=(x.shape[0], 1), dtype=x.dtype
         )  # [Batch_dim, min_samples, 1]
@@ -682,9 +682,9 @@ def maximum_entropy_search_multi_objective(model: ModelStack, obj_wise_min_sampl
         def single_obj_constraint_h(neg_means, stds, obj_wise_max):
             """
             Eq. 4.11 Calculate the obj-wise conditional entropy constraint on obj-wise minimum, we transformed to use the same notation
-            :param means [..., outcome]
+            :param neg_means [..., outcome]
             :param stds [..., outcome]
-            :param obj_wise_min [outcome]
+            :param obj_wise_max [outcome]
 
             :return [..., outcome]
             """
@@ -697,7 +697,6 @@ def maximum_entropy_search_multi_objective(model: ModelStack, obj_wise_min_sampl
             cons_h = tf.reduce_sum(single_obj_constraint_h(- fmean, fsd, - obj_wise_min_sample), axis=-1, keepdims=True)
             constraint_h = tf.concat([constraint_h, cons_h], axis=1)
 
-        # FIXedME?: gradient of acq can have nan issue
         return unconditial_h - tf.math.reduce_mean(constraint_h[..., 1:], axis=1, keepdims=True)
 
     return acquisition

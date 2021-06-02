@@ -29,7 +29,7 @@
 # %% [markdown]
 # \begin{equation}
 # \begin{aligned}
-# \alpha(x) &= H[PF\vert D] - \mathbb{E}_{f_x}H[PF \vert D, \{x, \boldsymbol{f}_x\}] \\& = H[\boldsymbol{f}_x\vert D] - \mathbb{E}_{PF}H[\boldsymbol{f}_x \vert D, x, PF]
+# \alpha(x) &= H[\mathcal{F^*} \vert D] - \mathbb{E}_{f_x}H[\mathcal{F^*} \vert D, \{x, \boldsymbol{f}_x\}] \\& = H[\boldsymbol{f}_x\vert D] - \mathbb{E}_{\mathcal{F^*}}H[\boldsymbol{f}_x \vert D, x, \mathcal{F^*}]
 # \end{aligned}
 # \end{equation}
 
@@ -394,14 +394,17 @@ plt.fill_between(
     mean[:, 0] + 1.96 * np.sqrt(var[:, 0]),
     color="C0",
     alpha=0.2,
+    label='gp posterior'
 )
 
 for _ in range(100):
     yy = f_samples[_](xx)
     plt.plot(xx, yy, color="C1")
+plt.plot(xx, f_samples[0](xx), color="C1", label='sampled parametric gp posterior')
 
 
 plt.plot(xx, samples[:, :, 0].numpy().T, "C0", linewidth=0.5)
+plt.legend(fontsize=15)
 _ = plt.xlim(-0.1, 1.1)
 
 
@@ -433,13 +436,13 @@ tf.keras.backend.set_floatx("float64")
 Xs_samples = Box([0.0, 0.0], [1.0, 1.0]).sample(22)
 X = Xs_samples
 Y = branin(X)
+
+
+
 k = gpflow.kernels.RBF(lengthscales=[1.0, 1.0])
 m_2d = gpflow.models.GPR(data=(X, Y), kernel=k, mean_function=None)
 opt = gpflow.optimizers.Scipy()
 opt_logs = opt.minimize(m_2d.training_loss, m_2d.trainable_variables, options=dict(maxiter=100))
-
-# %%
-m_2d
 
 # %%
 plot_gp_2d(m_2d,[0.0, 0.0], [1.0, 1.0])
@@ -508,7 +511,7 @@ from trieste.utils.parametric_gp_posterior import gen_approx_posterior_through_r
 f_samples = gen_approx_posterior_through_rff_wsa(m_2d, 5)
 
 # %%
-for _ in range(3):
+for _ in range(5):
     plot_function_2d(f_samples[_], [0.0, 0.0], [1.0, 1.0])
 
 # %% [markdown]
@@ -524,6 +527,7 @@ from trieste.space import Box
 from trieste.utils.objectives import branin
 from trieste.models import ModelStack
 from trieste.utils.mo_utils import sample_pareto_fronts_from_parametric_gp_posterior
+from trieste.models.config import create_model
 
 
 tf.random.set_seed(100)
@@ -532,22 +536,33 @@ tf.keras.backend.set_floatx("float64")
 Xs_samples = Box([0.0, 0.0], [1.0, 1.0]).sample(23)
 X = Xs_samples
 Y = branin(X)
+
+# model1
 k = gpflow.kernels.RBF(lengthscales=[1.0, 1.0])
-m_2d = gpflow.models.GPR(data=(X, Y), kernel=k, mean_function=None)
-opt = gpflow.optimizers.Scipy()
-opt_logs = opt.minimize(m_2d.training_loss, m_2d.trainable_variables, options=dict(maxiter=100))
-m_2d2 = gpflow.models.GPR(data=(X, -Y), kernel=k, mean_function=None)
-opt = gpflow.optimizers.Scipy()
-opt_logs = opt.minimize(m_2d2.training_loss, m_2d2.trainable_variables, options=dict(maxiter=100))
+m_2d1 = gpflow.models.GPR(data=(X, Y), kernel=k, mean_function=None)
+gpflow.utilities.set_trainable(m_2d1.likelihood, False)
+m_interface1 = create_model({
+"model": m_2d1,
+"optimizer": gpflow.optimizers.Scipy(),
+"optimizer_args": {
+"minimize_args": {"options": dict(maxiter=100)}}})
 
+# model2
+k2 = gpflow.kernels.RBF(lengthscales=[1.0, 1.0])
+m_2d2 = gpflow.models.GPR(data=(X, tf.reduce_sum(X**2, axis=1, keepdims=True)), kernel=k2, mean_function=None)
+gpflow.utilities.set_trainable(m_2d2.likelihood, False)
+m_interface2 = create_model({
+"model": m_2d2,
+"optimizer": gpflow.optimizers.Scipy(),
+"optimizer_args": {
+"minimize_args": {"options": dict(maxiter=100)}}})
 
-
-m_stack = ModelStack((m_2d, 1), (m_2d2, 1))
+m_stack = ModelStack((m_interface1, 1), (m_interface2, 1))
 f_samples = sample_pareto_fronts_from_parametric_gp_posterior(m_stack, 5, Box([0.0, 0.0], [1.0, 1.0]), popsize=30)
 
 # %%
 for i, res in zip(range(len(f_samples)), f_samples):
-    plt.scatter(res.F[:, 0], res.F[:, 1], label=f'PF sample {i}')
+    plt.scatter(res[:, 0], res[:, 1], label=f'PF sample {i}')
 plt.xlabel('Objective1')
 plt.ylabel('Objective2')
 plt.title('PF samples on parametric GP posterior')
@@ -557,7 +572,14 @@ plt.legend()
 # # MESMO
 
 # %% [markdown]
-# # PFES
+# Consider minimization, the conditional distribution given pareto front in MESMO is approximated as (recall Eq. 4.10 ):
+
+# %% [markdown]
+# \begin{equation}
+# \begin{aligned}
+# H[\boldsymbol{f}_x \vert D, x, \mathcal{F^*}] &\approx \sum_{j=1}^K H[y^j \vert D, x, max\{z_1^j, ..., z_m^j\}] \quad \text{Independent Assumption on each obj}\\& = \sum_{j=1}^K \left[ \frac{\gamma(\boldsymbol{x})\phi(\gamma)}{2\Phi(\gamma(\boldsymbol{x}))} - ln \Phi(\gamma(\boldsymbol{x})) \right] \quad \text{Same Formulation as Zi Wang's MES}
+# \end{aligned}
+# \end{equation}
 
 # %%
 import math
@@ -569,7 +591,7 @@ from util.plotting import plot_bo_points, plot_function_2d, plot_mobo_history, p
 
 # %%
 import trieste
-from trieste.acquisition.function import ParetoFrontierEntropySearch
+from trieste.acquisition.function import MESMO
 from trieste.acquisition.rule import OBJECTIVE
 from trieste.data import Dataset
 from trieste.models import create_model
@@ -595,7 +617,7 @@ num_objective = 2
 # Let's randomly sample some initial data from the observer ...
 
 # %%
-num_initial_points = 20
+num_initial_points = 15
 initial_query_points = search_space.sample(num_initial_points)
 initial_data = observer(initial_query_points)
 
@@ -654,11 +676,25 @@ def build_stacked_independent_objectives_model(data: Dataset, num_output) -> Mod
 models = {OBJECTIVE: build_stacked_independent_objectives_model(initial_data[OBJECTIVE], num_objective)}
 
 # %% [markdown]
-# ## Define the acquisition function
-# Here we utilize the [EHVI](https://link.springer.com/article/10.1007/s10898-019-00798-7): `ExpectedHypervolumeImprovement` acquisition function:
+# ## Sample the PF 
 
 # %%
-pfes = ParetoFrontierEntropySearch(search_space)
+from trieste.utils.mo_utils import sample_pareto_fronts_from_parametric_gp_posterior
+f_samples = sample_pareto_fronts_from_parametric_gp_posterior(models[OBJECTIVE], 10, search_space, popsize=30)
+
+for i, res in zip(range(len(f_samples)), f_samples):
+    plt.scatter(res[:, 0], res[:, 1], label=f'PF sample {i}')
+plt.xlabel('Objective1')
+plt.ylabel('Objective2')
+plt.title('PF samples for VMLOP2')
+plt.legend()
+
+# %% [markdown]
+# ## Define the acquisition function
+# Here we utilize the [MESMO](https://link.springer.com/article/10.1007/s10898-019-00798-7): `MESMO` acquisition function:
+
+# %%
+pfes = MESMO(search_space, num_pf_samples=3)
 rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(builder=pfes.using(OBJECTIVE))
 
 # %% [markdown]
@@ -667,7 +703,7 @@ rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(builder=pfe
 # We can now run the optimization loop
 
 # %%
-num_steps = 30
+num_steps = 20
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
 
@@ -702,6 +738,228 @@ plt.show()
 # %%
 plot_mobo_points_in_obj_space(data_observations, num_init=num_initial_points)
 plt.show()
+
+# %%
+from trieste.utils.mo_utils import sample_pareto_fronts_from_parametric_gp_posterior
+f_samples = sample_pareto_fronts_from_parametric_gp_posterior(result.try_get_final_models()[OBJECTIVE], 3, search_space, popsize=30)
+for i, res in zip(range(len(f_samples)), f_samples):
+    plt.scatter(res[:, 0], res[:, 1], label=f'PF sample {i}')
+plt.xlabel('Objective1')
+plt.ylabel('Objective2')
+plt.title('PF samples for VMLOP2')
+plt.legend()
+
+# %% [markdown]
+# We can also visualize how a performance metric evolved with respect to the number of BO iterations.
+# First, we need to define a performance metric. Many metrics have been considered for multi-objective optimization. Here, we use the log hypervolume difference, defined as the difference between the hypervolume of the actual Pareto front and the hypervolume of the approximate Pareto front based on the bo-obtained data.
+
+# %% [markdown]
+#
+# $$
+# log_{10}\ \text{HV}_{\text{diff}} = log_{10}(\text{HV}_{\text{actual}} - \text{HV}_{\text{bo-obtained}})
+# $$
+#
+
+# %% [markdown]
+# First we need to calculate the $\text{HV}_{\text{actual}}$ based on the actual Pareto front. For some multi-objective synthetic functions like VLMOP2, the actual Pareto front has a clear definition, thus we could use `gen_pareto_optimal_points` to near uniformly sample on the actual Pareto front. And use these generated Pareto optimal points to (approximately) calculate the hypervolume of the actual Pareto frontier:
+
+# %%
+actual_pf = VLMOP2().gen_pareto_optimal_points(100)  # gen 100 pf points
+ref_point = get_reference_point(data_observations)
+idea_hv = Pareto(tf.cast(actual_pf, dtype=data_observations.dtype)).hypervolume_indicator(ref_point)
+
+
+# %% [markdown]
+# Then we define the metric function:
+
+
+# %%
+def log_hv(observations):
+    obs_hv = Pareto(observations).hypervolume_indicator(ref_point)
+    return math.log10(idea_hv - obs_hv)
+
+
+# %% [markdown]
+# Finally, we can plot the convergence of our performance metric over the course of the optimization.
+# The blue vertical line in the figure denotes the time after which BO starts.
+
+# %%
+fig, ax = plot_mobo_history(data_observations, log_hv, num_init=num_initial_points)
+ax.set_xlabel("Iterations")
+ax.set_ylabel("log HV difference")
+plt.show()
+
+# %% [markdown]
+# # PFES
+
+# %%
+import math
+import gpflow
+import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow as tf
+from util.plotting import plot_bo_points, plot_function_2d, plot_mobo_history, plot_mobo_points_in_obj_space
+
+# %%
+import trieste
+from trieste.acquisition.function import ParetoFrontierEntropySearch
+from trieste.acquisition.rule import OBJECTIVE
+from trieste.data import Dataset
+from trieste.models import create_model
+from trieste.models.model_interfaces import ModelStack
+from trieste.space import Box
+from trieste.utils.multi_objectives import VLMOP2
+from trieste.utils.pareto import Pareto, get_reference_point
+from trieste.acquisition.rule import EfficientGlobalOptimization
+
+np.random.seed(1793)
+tf.random.set_seed(1793)
+
+# %%
+vlmop2 = VLMOP2().objective()
+observer = trieste.utils.objectives.mk_observer(vlmop2, OBJECTIVE)
+
+mins = [-2, -2]
+maxs = [2, 2]
+search_space = Box(mins, maxs)
+num_objective = 2
+
+# %% [markdown]
+# Let's randomly sample some initial data from the observer ...
+
+# %%
+num_initial_points = 30
+initial_query_points = search_space.sample(num_initial_points)
+initial_data = observer(initial_query_points)
+
+# %% [markdown]
+# ... and visualise the data across the design space: each figure contains the contour lines of each objective function.
+
+# %%
+_, ax = plot_function_2d(
+    vlmop2,
+    mins,
+    maxs,
+    grid_density=100,
+    contour=True,
+    title=["Obj 1", "Obj 2"],
+    figsize=(12, 6),
+    colorbar=True,
+    xlabel="$X_1$",
+    ylabel="$X_2$",
+)
+plot_bo_points(initial_query_points, ax=ax[0, 0], num_init=num_initial_points)
+plot_bo_points(initial_query_points, ax=ax[0, 1], num_init=num_initial_points)
+plt.show()
+
+# %% [markdown]
+# ... and in the objective space. The `plot_mobo_points_in_obj_space` will automatically search for non-dominated points and colours them in purple.
+
+# %%
+plot_mobo_points_in_obj_space(initial_data[OBJECTIVE].observations)
+plt.show()
+
+
+# %% [markdown]
+# ## Modelling the two functions
+
+
+# %%
+def build_stacked_independent_objectives_model(data: Dataset, num_output) -> ModelStack:
+        gprs =[]
+        for idx in range(num_output):
+            single_obj_data = Dataset(data.query_points, tf.gather(data.observations, [idx], axis=1))
+            variance = tf.math.reduce_variance(single_obj_data.observations)
+            kernel = gpflow.kernels.Matern52(variance, lengthscales=[1.0] * 2) 
+            jitter = gpflow.kernels.White(1e-12)
+            gpr = gpflow.models.GPR((single_obj_data.query_points, single_obj_data.observations), kernel, noise_variance=1e-5)
+            gpflow.utilities.set_trainable(gpr.likelihood, False)
+            gprs.append((create_model({
+            "model": gpr,
+            "optimizer": gpflow.optimizers.Scipy(),
+            "optimizer_args": {
+            "minimize_args": {"options": dict(maxiter=100)}}}), 1))
+
+        return ModelStack(*gprs)
+
+
+# %%
+models = {OBJECTIVE: build_stacked_independent_objectives_model(initial_data[OBJECTIVE], num_objective)}
+
+# %% [markdown]
+# ## Sample the PF 
+
+# %%
+from trieste.utils.mo_utils import sample_pareto_fronts_from_parametric_gp_posterior
+f_samples = sample_pareto_fronts_from_parametric_gp_posterior(models[OBJECTIVE], 10, search_space, popsize=30)
+
+for i, res in zip(range(len(f_samples)), f_samples):
+    plt.scatter(res[:, 0], res[:, 1], label=f'PF sample {i}')
+plt.xlabel('Objective1')
+plt.ylabel('Objective2')
+plt.title('PF samples for VMLOP2')
+plt.legend()
+
+# %% [markdown]
+# ## Define the acquisition function
+# Here we utilize the [PFES](https://link.springer.com/article/10.1007/s10898-019-00798-7): `ParetoFrontierEntropySearch` acquisition function:
+
+# %%
+pfes = ParetoFrontierEntropySearch(search_space, num_pf_samples=10)
+rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(builder=pfes.using(OBJECTIVE))
+
+# %% [markdown]
+# ## Run the optimization loop
+#
+# We can now run the optimization loop
+
+# %%
+num_steps = 20
+bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
+result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
+
+# %% [markdown]
+# To conclude, we visualize the queried data across the design space.
+# We represent the initial points as crosses and the points obtained by our optimization loop as dots.
+
+# %%
+datasets = result.try_get_final_datasets()
+data_query_points = datasets[OBJECTIVE].query_points
+data_observations = datasets[OBJECTIVE].observations
+
+_, ax = plot_function_2d(
+    vlmop2,
+    mins,
+    maxs,
+    grid_density=100,
+    contour=True,
+    figsize=(12, 6),
+    title=["Obj 1", "Obj 2"],
+    xlabel="$X_1$",
+    ylabel="$X_2$",
+    colorbar=True,
+)
+plot_bo_points(data_query_points, ax=ax[0, 0], num_init=num_initial_points)
+plot_bo_points(data_query_points, ax=ax[0, 1], num_init=num_initial_points)
+plt.show()
+
+# %% [markdown]
+# Visualize in objective space. Purple dots denote the non-dominated points.
+
+# %%
+plot_mobo_points_in_obj_space(data_observations, num_init=num_initial_points)
+plt.show()
+
+# %%
+from trieste.utils.mo_utils import sample_pareto_fronts_from_parametric_gp_posterior
+f_samples = sample_pareto_fronts_from_parametric_gp_posterior(result.try_get_final_models()[OBJECTIVE], 10, search_space, popsize=30)
+
+for i, res in zip(range(len(f_samples)), f_samples):
+    plt.scatter(res[:, 0], res[:, 1], label=f'PF sample {i}')
+plt.xlabel('Objective1')
+plt.ylabel('Objective2')
+plt.title('PF samples for VMLOP2')
+plt.legend()
 
 # %% [markdown]
 # We can also visualize how a performance metric evolved with respect to the number of BO iterations.

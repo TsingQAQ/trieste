@@ -70,9 +70,9 @@ plt.show()
 
 # ... and in the objective space
 
-from util.plotting import plot_bo_points_in_obj_space
+from util.plotting import plot_mobo_points_in_obj_space
 
-plot_bo_points_in_obj_space(initial_data[OBJECTIVE].observations)
+plot_mobo_points_in_obj_space(initial_data[OBJECTIVE].observations)
 plt.show()
 
 
@@ -126,7 +126,7 @@ rule: EfficientGlobalOptimization[Box] = EfficientGlobalOptimization(builder=hve
 #
 # We can now run the optimization loop
 
-num_steps = 20
+num_steps = 40
 bo = trieste.bayesian_optimizer.BayesianOptimizer(observer, search_space)
 result = bo.optimize(num_steps, initial_data, models, acquisition_rule=rule)
 
@@ -146,7 +146,8 @@ plt.show()
 
 # ... and visulize in the objective space, orange dots denotes the nondominated points.
 
-plot_bo_points_in_obj_space(datasets[OBJECTIVE].observations, num_init=num_initial_points)
+plot_mobo_points_in_obj_space(datasets[OBJECTIVE].observations, num_init=num_initial_points)
+plt.title('VLMOP2 Problem')
 plt.show()
 
 # [1] Yang, K., Emmerich, M., Deutz, A., & Bäck, T. (2019). Efficient computation of expected hypervolume improvement using box decomposition algorithms. Journal of Global Optimization, 75(1), 3-34.

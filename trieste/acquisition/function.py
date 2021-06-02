@@ -54,7 +54,7 @@ class AcquisitionFunctionBuilder(ABC):
 
     @abstractmethod
     def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
     ) -> AcquisitionFunction:
         """
         :param datasets: The data from the observer.
@@ -79,7 +79,7 @@ class SingleModelAcquisitionBuilder(ABC):
 
         class _Anon(AcquisitionFunctionBuilder):
             def prepare_acquisition_function(
-                self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+                    self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
             ) -> AcquisitionFunction:
                 return single_builder.prepare_acquisition_function(datasets[tag], models[tag])
 
@@ -90,7 +90,7 @@ class SingleModelAcquisitionBuilder(ABC):
 
     @abstractmethod
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+            self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         :param dataset: The data to use to build the acquisition function.
@@ -110,7 +110,7 @@ class ExpectedImprovement(SingleModelAcquisitionBuilder):
         return "ExpectedImprovement()"
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+            self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         :param dataset: The data from the observer. Must be populated.
@@ -186,7 +186,7 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder):
         self._grid_size = grid_size
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+            self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         :param dataset: The data from the observer.
@@ -269,7 +269,7 @@ class NegativeLowerConfidenceBound(SingleModelAcquisitionBuilder):
         return f"NegativeLowerConfidenceBound({self._beta!r})"
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+            self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         :param dataset: Unused.
@@ -364,7 +364,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
         return self._threshold
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+            self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         :param dataset: Unused.
@@ -377,7 +377,7 @@ class ProbabilityOfFeasibility(SingleModelAcquisitionBuilder):
 
 
 def probability_of_feasibility(
-    model: ProbabilisticModel, threshold: float | TensorType
+        model: ProbabilisticModel, threshold: float | TensorType
 ) -> AcquisitionFunction:
     r"""
     The probability of feasibility acquisition function defined in :cite:`gardner14` as
@@ -420,10 +420,10 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
     """
 
     def __init__(
-        self,
-        objective_tag: str,
-        constraint_builder: AcquisitionFunctionBuilder,
-        min_feasibility_probability: float | TensorType = 0.5,
+            self,
+            objective_tag: str,
+            constraint_builder: AcquisitionFunctionBuilder,
+            min_feasibility_probability: float | TensorType = 0.5,
     ):
         """
         :param objective_tag: The tag for the objective data and model.
@@ -453,7 +453,7 @@ class ExpectedConstrainedImprovement(AcquisitionFunctionBuilder):
         )
 
     def prepare_acquisition_function(
-        self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
+            self, datasets: Mapping[str, Dataset], models: Mapping[str, ProbabilisticModel]
     ) -> AcquisitionFunction:
         """
         :param datasets: The data from the observer.
@@ -498,7 +498,7 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
         return "ExpectedHypervolumeImprovement()"
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+            self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         :param dataset: The data from the observer. Must be populated.
@@ -514,9 +514,9 @@ class ExpectedHypervolumeImprovement(SingleModelAcquisitionBuilder):
 
 
 def expected_hv_improvement(
-    model: ProbabilisticModel,
-    pareto: Pareto,
-    reference_point: TensorType,
+        model: ProbabilisticModel,
+        pareto: Pareto,
+        reference_point: TensorType,
 ) -> AcquisitionFunction:
     r"""
     expected Hyper-volume (HV) calculating using Eq. 44 of :cite:`yang2019efficient` paper.
@@ -555,14 +555,14 @@ def expected_hv_improvement(
 
         def Psi(a: TensorType, b: TensorType, mean: TensorType, std: TensorType) -> TensorType:
             return std * normal.prob((b - mean) / std) + (mean - a) * (
-                1 - normal.cdf((b - mean) / std)
+                    1 - normal.cdf((b - mean) / std)
             )
 
         def nu(lb: TensorType, ub: TensorType, mean: TensorType, std: TensorType) -> TensorType:
             return (ub - lb) * (1 - normal.cdf((ub - mean) / std))
 
         def ehvi_based_on_partitioned_cell(
-            neg_pred_mean: TensorType, pred_std: TensorType
+                neg_pred_mean: TensorType, pred_std: TensorType
         ) -> TensorType:
             r"""
             Calculate the ehvi based on cell i.
@@ -648,20 +648,59 @@ class MESMO(SingleModelAcquisitionBuilder):
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
 
-        obj_wise_max_samples = []
+        obj_wise_min_samples = []
         pf_samples = sample_pareto_fronts_from_parametric_gp_posterior(
             model, self._num_pf_samples, self._search_space, popsize=self._popsize,
             num_moo_iter=self._moo_iter
         )
         for pf_sample in pf_samples:
-            # TODO:
-            obj_wise_max_samples.append()
+            obj_wise_min_samples.append(tf.reduce_min(pf_sample, axis=0))
 
-        return maximum_entropy_search_multi_objective(model, obj_wise_max_samples)
+        return maximum_entropy_search_multi_objective(model, obj_wise_min_samples)
 
 
-def maximum_entropy_search_multi_objective(model, obj_wise_max_samples):
-    raise NotImplementedError
+def maximum_entropy_search_multi_objective(model: ModelStack, obj_wise_min_samples):
+    """
+    MESMO acquisition function
+    :param obj_wise_min_samples: [PF_samples, output_dim]
+    """
+
+    def acquisition(x: TensorType) -> TensorType:
+        tf.debugging.assert_shapes(
+            [(x, ["Batch_dim", 1, None])],
+            message="This acquisition function only supports batch sizes of one.",
+        )
+        normal = tfp.distributions.Normal(tf.cast(0, x.dtype), tf.cast(1, x.dtype))
+        fmean, fvar = model.predict(tf.squeeze(x, -2))
+
+        fsd = tf.clip_by_value(tf.math.sqrt(fvar), 1e-100, 1e100)  # clip below to improve numerical stability
+        unconditial_h = tf.reduce_sum(tf.cast((1 + tf.math.log(2 * pi)), dtype=x.dtype) / 2 + tf.math.log(fsd), axis=-1)
+        constraint_h = tf.zeros(
+            shape=(x.shape[0], 1), dtype=x.dtype
+        )  # [Batch_dim, min_samples, 1]
+
+        def single_obj_constraint_h(neg_means, stds, obj_wise_max):
+            """
+            Eq. 4.11 Calculate the obj-wise conditional entropy constraint on obj-wise minimum, we transformed to use the same notation
+            :param means [..., outcome]
+            :param stds [..., outcome]
+            :param obj_wise_min [outcome]
+
+            :return [..., outcome]
+            """
+            gamma = (obj_wise_max - neg_means) / stds
+            return tf.cast((1 + tf.math.log(2 * pi)), dtype=x.dtype) / 2 + tf.math.log(stds) + \
+                   tf.math.log(normal.cdf(gamma)) - \
+                   gamma * normal.prob(gamma) / 2 * normal.cdf(gamma)
+
+        for obj_wise_min_sample in obj_wise_min_samples:
+            cons_h = tf.reduce_sum(single_obj_constraint_h(- fmean, fsd, - obj_wise_min_sample), axis=-1, keepdims=True)
+            constraint_h = tf.concat([constraint_h, cons_h], axis=1)
+
+        # FIXedME?: gradient of acq can have nan issue
+        return unconditial_h - tf.math.reduce_mean(constraint_h[..., 1:], axis=1, keepdims=True)
+
+    return acquisition
 
 
 class ParetoFrontierEntropySearch(SingleModelAcquisitionBuilder):
@@ -671,7 +710,7 @@ class ParetoFrontierEntropySearch(SingleModelAcquisitionBuilder):
     follows :cite:`None`
     """
 
-    def __init__(self, search_space: SearchSpace, num_pf_samples: int = 2, popsize: int = 50, moo_iter: int = 100):
+    def __init__(self, search_space: SearchSpace, num_pf_samples: int = 1, popsize: int = 50, moo_iter: int = 100):
         if num_pf_samples <= 0:
             raise ValueError(f"num_samples must be positive, got {num_pf_samples}")
         self._num_pf_samples = num_pf_samples
@@ -684,7 +723,7 @@ class ParetoFrontierEntropySearch(SingleModelAcquisitionBuilder):
         return "ParetoFrontierEntropySearch()"
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ModelStack
+            self, dataset: Dataset, model: ModelStack
     ) -> AcquisitionFunction:
         """
         :param dataset: The data from the observer. Must be populated.
@@ -694,42 +733,36 @@ class ParetoFrontierEntropySearch(SingleModelAcquisitionBuilder):
         tf.debugging.assert_positive(len(dataset), message="Dataset must be populated.")
         mean, _ = model.predict(dataset.query_points)
 
-        pf_samples = sample_pareto_fronts_from_parametric_gp_posterior(
+        pf_samples = sample_pareto_fronts_from_parametric_gp_posterior(  # sample pareto frontier
             model, self._num_pf_samples, self._search_space, popsize=self._popsize,
             num_moo_iter=self._moo_iter
         )
         _neg_reference_pt = []
 
-        # for pf_sample in pf_samples:
-        #     _neg_reference_pt.append(get_reference_point(-pf_sample))
         return pareto_frontier_entropy_search(model, pf_samples)
 
 
 def pareto_frontier_entropy_search(
-    model: ProbabilisticModel,
-    paretos: list[TensorType],
+        model: ProbabilisticModel,
+        paretos: list[TensorType],
 ):
     """
     :param paretos
     :param model
-    :param reference_points
     """
-    tf.debugging.assert_shapes([(paretos, ["pf_sample_size", "popsize", "output_dim"])])
 
     def acquisition(x: TensorType) -> TensorType:
         tf.debugging.assert_shapes(
             [(x, ["Batch_dim", 1, None])],
             message="This acquisition function only supports batch sizes of one.",
         )
-        # tf.debugging.assert_equal(len(reference_points), len(paretos))
-
         normal = tfp.distributions.Normal(tf.cast(0, x.dtype), tf.cast(1, x.dtype))
         fmean, fvar = model.predict(tf.squeeze(x, -2))
         L = fmean.shape[-1]  # obj num
-        tf.clip_by_value(fvar, 1.0e-8, fmean.dtype.max)  # clip below to improve numerical stability
-        unconstraint_h = 1 / 2 * tf.math.log((tf.cast(2 * pi * e , dtype=x.dtype) ** L) *
-                                             tf.reduce_prod(fvar, axis=-1, keepdims=True))    # [Batch_dim, None]
-        fsd = tf.math.sqrt(fvar)
+        unconditial_h = 1 / 2 * tf.math.log(  # assume independent
+            (tf.cast(2 * pi * e, dtype=x.dtype) ** L) *
+            tf.reduce_prod(fvar, axis=-1, keepdims=True))  # [Batch_dim, None]
+        fsd = tf.clip_by_value(tf.math.sqrt(fvar), 1e-100, 1e100)  # clip below to improve numerical stability
 
         constraint_h = tf.zeros(
             shape=(x.shape[0], 1), dtype=x.dtype
@@ -737,6 +770,7 @@ def pareto_frontier_entropy_search(
 
         def box_entropy(mean, std, lower_bound, upper_bound) -> TensorType:
             """
+            Calculate the box entropy assuming minimization of the problem
             :param: mean: [Batch_dim, 1, ...]
             :param: std: [Batch_dim, 1, ...]
             :param: lower_bound: [N, L]
@@ -746,33 +780,35 @@ def pareto_frontier_entropy_search(
             """
             alpha_u = (upper_bound - mean) / std  # [B, N, L]
             alpha_l = (lower_bound - mean) / std  # [B, N, L]
-            z_ml = normal.cdf(alpha_u) - normal.cdf(alpha_l)  # [B, N, L]
-            z_ml = tf.math.maximum(z_ml, 1e-20)
+            alpha_u = tf.clip_by_value(alpha_u, alpha_u.dtype.min,
+                                       alpha_u.dtype.max)  # clip to improve numerical stability
+            alpha_l = tf.clip_by_value(alpha_l, alpha_l.dtype.min,
+                                       alpha_l.dtype.max)  # clip to improve numerical stability
+            z_ml = (1 - normal.cdf(alpha_l)) - (1 - normal.cdf(alpha_u))  # [B, N, L]
+            z_ml = tf.math.maximum(z_ml, 1e-100)  # clip to improve numerical stability
             z_m = tf.reduce_prod(z_ml, axis=-1)  # [B, N]
             z = tf.reduce_sum(z_m, axis=-1, keepdims=True)  # B
-            alpha_u = tf.clip_by_value(alpha_u, alpha_u.dtype.min, alpha_u.dtype.max)
-            alpha_l = tf.clip_by_value(alpha_u, alpha_l.dtype.min, alpha_l.dtype.max)
+            z = tf.maximum(z, 1e-100)  # clip to improve numerical stability
             gamma_ml = (alpha_u * normal.prob(alpha_u) - alpha_l * normal.prob(alpha_l)) / (2 * z_ml)  # [B, N, L]
+            gamma_ml = tf.clip_by_value(gamma_ml, -1e100, 1e100)
             return tf.math.log(
                 tf.cast(tf.sqrt(2 * pi * e) ** L, dtype=tf.float64) * z * tf.reduce_prod(std, axis=-1)
-            ) + tf.reduce_sum(z_m / z * tf.reduce_sum(gamma_ml, axis=-1), axis=-1, keepdims=True)
+            ) + tf.reduce_sum((z_m / z) * tf.reduce_sum(gamma_ml, axis=-1), axis=-1, keepdims=True)
 
         # pareto class is not yet supported batch, we have to hence rely on a loop
         for pareto in paretos:
             _neg_pareto = - pareto  # partition the dominated region
             helper_lb_points, helper_ub_points = Pareto(_neg_pareto).hypercell_bounds(
-                -tf.constant([inf] * x.shape[-1], dtype=x.dtype), tf.reduce_max(_neg_pareto, axis=0),
-            )
+                - tf.constant([1e20] * x.shape[-1], dtype=x.dtype), tf.reduce_max(_neg_pareto, axis=0),
+            )  # not use inf to increase stability
             cons_h = box_entropy(  # inverse the helper to be lower and upper
                 tf.expand_dims(fmean, 1), tf.expand_dims(fsd, 1), - helper_ub_points, - helper_lb_points
             )
             constraint_h = tf.concat([constraint_h, cons_h], axis=1)
 
-        # FIXME?: Have negative value
-        # FIXME?: gradient of acq can have nan issue
-        # tf.print(f"unconstraint_h: {unconstraint_h}")
-        # tf.print(f"constraint_h: {tf.math.reduce_mean(constraint_h[..., 1:], axis=1, keepdims=True)}")
-        return unconstraint_h - tf.math.reduce_mean(constraint_h[..., 1:], axis=1, keepdims=True)
+        # FIXME?: Entropy difference can have negative value
+        # FIXedME?: gradient of acq can have nan issue
+        return unconditial_h - tf.math.reduce_mean(constraint_h[..., 1:], axis=1, keepdims=True)
 
     return acquisition
 
@@ -809,7 +845,7 @@ class BatchMonteCarloExpectedImprovement(SingleModelAcquisitionBuilder):
         return f"BatchMonteCarloExpectedImprovement({self._sample_size!r}, jitter={self._jitter!r})"
 
     def prepare_acquisition_function(
-        self, dataset: Dataset, model: ProbabilisticModel
+            self, dataset: Dataset, model: ProbabilisticModel
     ) -> AcquisitionFunction:
         """
         :param dataset: The data from the observer. Must be populated.
@@ -851,10 +887,10 @@ class GreedyAcquisitionFunctionBuilder(ABC):
 
     @abstractmethod
     def prepare_acquisition_function(
-        self,
-        datasets: Mapping[str, Dataset],
-        models: Mapping[str, ProbabilisticModel],
-        pending_points: Optional[TensorType] = None,
+            self,
+            datasets: Mapping[str, Dataset],
+            models: Mapping[str, ProbabilisticModel],
+            pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
         :param datasets: The data from the observer.
@@ -881,10 +917,10 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
 
         class _Anon(GreedyAcquisitionFunctionBuilder):
             def prepare_acquisition_function(
-                self,
-                datasets: Mapping[str, Dataset],
-                models: Mapping[str, ProbabilisticModel],
-                pending_points: Optional[TensorType] = None,
+                    self,
+                    datasets: Mapping[str, Dataset],
+                    models: Mapping[str, ProbabilisticModel],
+                    pending_points: Optional[TensorType] = None,
             ) -> AcquisitionFunction:
                 return single_builder.prepare_acquisition_function(
                     datasets[tag], models[tag], pending_points=pending_points
@@ -897,10 +933,10 @@ class SingleModelGreedyAcquisitionBuilder(ABC):
 
     @abstractmethod
     def prepare_acquisition_function(
-        self,
-        dataset: Dataset,
-        model: ProbabilisticModel,
-        pending_points: Optional[TensorType] = None,
+            self,
+            dataset: Dataset,
+            model: ProbabilisticModel,
+            pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
         :param dataset: The data to use to build the acquisition function.
@@ -933,10 +969,10 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
     """
 
     def __init__(
-        self,
-        search_space: SearchSpace,
-        num_samples: int = 500,
-        penalizer: Callable[..., PenalizationFunction] = None,
+            self,
+            search_space: SearchSpace,
+            num_samples: int = 500,
+            penalizer: Callable[..., PenalizationFunction] = None,
     ):
         """
         :param search_space: The global search space over which the optimisation is defined.
@@ -957,10 +993,10 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
         self._eta = None
 
     def prepare_acquisition_function(
-        self,
-        dataset: Dataset,
-        model: ProbabilisticModel,
-        pending_points: Optional[TensorType] = None,
+            self,
+            dataset: Dataset,
+            model: ProbabilisticModel,
+            pending_points: Optional[TensorType] = None,
     ) -> AcquisitionFunction:
         """
         :param dataset: The data from the observer.
@@ -973,13 +1009,13 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
             raise ValueError("Dataset must be populated.")
 
         if (
-            pending_points is None
+                pending_points is None
         ):  # only compute penalization parameters once per optimization step
             samples = self._search_space.sample(num_samples=self._num_samples)
             samples = tf.concat([dataset.query_points, samples], 0)
 
             def get_lipschitz_estimate(
-                sampled_points,
+                    sampled_points,
             ) -> tf.Tensor:  # use max norm of posterior mean gradients
                 with tf.GradientTape() as g:
                     g.watch(sampled_points)
@@ -992,7 +1028,7 @@ class LocallyPenalizedExpectedImprovement(SingleModelGreedyAcquisitionBuilder):
 
             lipschitz_constant, eta = get_lipschitz_estimate(samples)
             if (
-                lipschitz_constant < 1e-5
+                    lipschitz_constant < 1e-5
             ):  # threshold to improve numerical stability for 'flat' models
                 lipschitz_constant = 10
 
@@ -1037,10 +1073,10 @@ shape `[..., 1, D]` and returns shape `[..., 1]`.
 
 
 def soft_local_penalizer(
-    model: ProbabilisticModel,
-    pending_points: TensorType,
-    lipschitz_constant: TensorType,
-    eta: TensorType,
+        model: ProbabilisticModel,
+        pending_points: TensorType,
+        lipschitz_constant: TensorType,
+        eta: TensorType,
 ) -> PenalizationFunction:
     r"""
     Return the soft local penalization function used for single-objective greedy batch Bayesian
@@ -1089,10 +1125,10 @@ def soft_local_penalizer(
 
 
 def hard_local_penalizer(
-    model: ProbabilisticModel,
-    pending_points: TensorType,
-    lipschitz_constant: TensorType,
-    eta: TensorType,
+        model: ProbabilisticModel,
+        pending_points: TensorType,
+        lipschitz_constant: TensorType,
+        eta: TensorType,
 ) -> PenalizationFunction:
     r"""
     Return the hard local penalization function used for single-objective greedy batch Bayesian

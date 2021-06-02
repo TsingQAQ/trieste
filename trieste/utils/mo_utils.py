@@ -1,6 +1,5 @@
 from typing import List
 
-import autograd.numpy as anp
 import tensorflow as tf
 from pymoo.algorithms.nsga2 import NSGA2
 from pymoo.factory import get_crossover, get_mutation, get_sampling
@@ -11,25 +10,28 @@ from trieste.models import ModelStack
 from trieste.type import TensorType
 
 from .parametric_gp_posterior import gen_approx_posterior_through_rff_wsa
+from ..models.model_interfaces import GaussianProcessRegression
 
 
 # TODO: Currently only support ARD kernel
 def sample_pareto_fronts_from_parametric_gp_posterior(
-    gp_model: ModelStack,
+    models: ModelStack,
     sample_pf_num: int,
     search_space,
     popsize: int = 20,
     num_moo_iter: int = 300,
 ) -> List[TensorType]:
     """
-    :param gp_model
+    :param models
     :param sample_pf_num
     :param search_space
     :param popsize
     :param num_moo_iter
     """
+    assert isinstance(models, ModelStack)
     gp_post_samples = []
-    for obj_model in gp_model._models:  # gen rff_wsa sample for each obj
+    for obj_model in models._models:  # gen rff_wsa sample for each obj
+        assert isinstance(obj_model, GaussianProcessRegression)
         gp_post_samples.append(gen_approx_posterior_through_rff_wsa(obj_model.model, sample_pf_num))
 
     pf_samples = []
@@ -40,7 +42,7 @@ def sample_pareto_fronts_from_parametric_gp_posterior(
         pf_samples.append(
             moo_optimize(
                 obj_model,
-                len(gp_model._models),
+                len(models._models),
                 len(search_space.lower),
                 (search_space.lower, search_space.upper),
                 popsize,

@@ -1,0 +1,43 @@
+:mod:`trieste`
+==============
+
+.. py:module:: trieste
+
+.. autoapi-nested-parse::
+
+   The library root. See :mod:`~trieste.bayesian_optimizer` for the core optimizer, which requires
+   models (see :mod:`~trieste.models`), and data sets (see :mod:`~trieste.data`). The
+   :mod:`~trieste.acquisition` package provides a selection of acquisition algorithms and the
+   functionality to define your own.
+
+   Bibliography
+   ============
+
+   .. bibliography::
+
+
+
+Subpackages
+-----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 3
+
+   acquisition/index.rst
+   models/index.rst
+   utils/index.rst
+
+
+Submodules
+----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   bayesian_optimizer/index.rst
+   data/index.rst
+   observer/index.rst
+   space/index.rst
+   type/index.rst
+
+

@@ -1,0 +1,802 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.utils.objectives &#8212; trieste 0.5.1 documentation</title>
+    
+  <link href="../../../../_static/css/theme.css" rel="stylesheet" />
+  <link href="../../../../_static/css/index.c5995385ac14fb8791e8eb36b4908be2.css" rel="stylesheet" />
+
+    
+  <link rel="stylesheet"
+    href="../../../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    
+      
+
+    
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/basic.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    
+  <link rel="preload" as="script" href="../../../../_static/js/index.1c5a1a01449ed65a7b51.js">
+
+    <script data-url_root="../../../../" id="documentation_options" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/jquery.js"></script>
+    <script src="../../../../_static/underscore.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "document", "processHtmlClass": "math|output_area"}}</script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="next" title="trieste.utils.pareto" href="../pareto/index.html" />
+    <link rel="prev" title="trieste.utils.multi_objectives" href="../multi_objectives/index.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="en" />
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="80">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+    <nav class="navbar navbar-light navbar-expand-lg bg-light fixed-top bd-navbar" id="navbar-main"><div class="container-xl">
+
+  <div id="navbar-start">
+    
+    
+
+<a class="navbar-brand" href="../../../../index.html">
+  <img src="../../../../_static/logo.png" class="logo" alt="logo">
+</a>
+
+
+    
+  </div>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-collapsible" aria-controls="navbar-collapsible" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  
+  <div id="navbar-collapsible" class="col-lg-9 collapse navbar-collapse">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <ul id="navbar-main-elements" class="navbar-nav">
+    <li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../index.html">
+  Trieste
+ </a>
+</li>
+
+<li class="toctree-l1 current active nav-item">
+ <a class="reference internal nav-link" href="../../index.html">
+  API reference
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../tutorials.html">
+  Tutorials
+ </a>
+</li>
+
+    
+</ul>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+        <li class="nav-item">
+          <a class="nav-link" href="https://github.com/secondmind-labs/trieste" rel="noopener" target="_blank" title="GitHub">
+            <span><i class="fab fa-github-square"></i></span>
+            <label class="sr-only">GitHub</label>
+          </a>
+        </li>
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+    </nav>
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+            
+            <!-- Only show if we have sidebars configured, else just a small margin  -->
+            <div class="col-12 col-md-3 bd-sidebar"><form class="bd-search d-flex align-items-center" action="../../../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+  <div class="bd-toc-item active">
+    <ul class="current nav bd-sidenav">
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../acquisition/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.acquisition
+    </span>
+   </code>
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/>
+  <label for="toctree-checkbox-1">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../acquisition/function/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.function
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../acquisition/optimizer/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.optimizer
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../acquisition/rule/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.rule
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../acquisition/sampler/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.sampler
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../models/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.models
+    </span>
+   </code>
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/>
+  <label for="toctree-checkbox-2">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../models/optimizer/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.optimizer
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 current active has-children">
+  <a class="reference internal" href="../index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.utils
+    </span>
+   </code>
+  </a>
+  <input checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/>
+  <label for="toctree-checkbox-3">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul class="current">
+   <li class="toctree-l2">
+    <a class="reference internal" href="../multi_objectives/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.utils.multi_objectives
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2 current active">
+    <a class="current reference internal" href="#">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.utils.objectives
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../pareto/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.utils.pareto
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../bayesian_optimizer/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.bayesian_optimizer
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../data/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.data
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../observer/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.observer
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../space/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.space
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../type/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.type
+    </span>
+   </code>
+  </a>
+ </li>
+</ul>
+
+  </div>
+</nav>
+            </div>
+            
+          
+
+          
+          <div class="d-none d-xl-block col-xl-2 bd-toc">
+            
+              
+              <div class="toc-item">
+                
+<div class="tocsection onthispage pt-5 pb-3">
+    <i class="fas fa-list"></i> On this page
+</div>
+
+<nav id="bd-toc-nav">
+    <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#module-contents">
+   Module Contents
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.branin">
+     branin
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.BRANIN_MINIMIZERS">
+     BRANIN_MINIMIZERS
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.BRANIN_MINIMUM">
+     BRANIN_MINIMUM
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.gramacy_lee">
+     gramacy_lee
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.GRAMACY_LEE_MINIMIZER">
+     GRAMACY_LEE_MINIMIZER
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.GRAMACY_LEE_MINIMUM">
+     GRAMACY_LEE_MINIMUM
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.logarithmic_goldstein_price">
+     logarithmic_goldstein_price
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER">
+     LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM">
+     LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.hartmann_3">
+     hartmann_3
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.HARTMANN_3_MINIMIZER">
+     HARTMANN_3_MINIMIZER
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.HARTMANN_3_MINIMUM">
+     HARTMANN_3_MINIMUM
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.shekel_4">
+     shekel_4
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.SHEKEL_4_MINIMIZER">
+     SHEKEL_4_MINIMIZER
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.SHEKEL_4_MINIMUM">
+     SHEKEL_4_MINIMUM
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.rosenbrock_4">
+     rosenbrock_4
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.ROSENBROCK_4_MINIMIZER">
+     ROSENBROCK_4_MINIMIZER
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.ROSENBROCK_4_MINIMUM">
+     ROSENBROCK_4_MINIMUM
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.ackley_5">
+     ackley_5
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.ACKLEY_5_MINIMIZER">
+     ACKLEY_5_MINIMIZER
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.ACKLEY_5_MINIMUM">
+     ACKLEY_5_MINIMUM
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.hartmann_6">
+     hartmann_6
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.HARTMANN_6_MINIMIZER">
+     HARTMANN_6_MINIMIZER
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.HARTMANN_6_MINIMUM">
+     HARTMANN_6_MINIMUM
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.utils.objectives.mk_observer">
+     mk_observer
+    </a>
+   </li>
+  </ul>
+ </li>
+</ul>
+
+</nav>
+              </div>
+              
+              <div class="toc-item">
+                
+              </div>
+              
+            
+          </div>
+          
+
+          
+          
+            
+          
+          <main class="col-12 col-md-9 col-xl-7 py-md-5 pl-md-5 pr-md-4 bd-content" role="main">
+              
+              <div>
+                
+  <div class="section" id="module-trieste.utils.objectives">
+<span id="trieste-utils-objectives"></span><h1><a class="reference internal" href="#module-trieste.utils.objectives" title="trieste.utils.objectives"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.utils.objectives</span></code></a><a class="headerlink" href="#module-trieste.utils.objectives" title="Permalink to this headline">¶</a></h1>
+<p>This module contains toy objective functions, useful for experimentation. A number of them have been
+taken from <a class="reference external" href="https://www.sfu.ca/~ssurjano/optimization.html">this Virtual Library of Simulation Experiments</a>.</p>
+<div class="section" id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.utils.objectives.branin">
+<span class="sig-name descname"><span class="pre">branin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../type/index.html#trieste.type.TensorType" title="trieste.type.TensorType"><span class="pre">trieste.type.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../type/index.html#trieste.type.TensorType" title="trieste.type.TensorType"><span class="pre">trieste.type.TensorType</span></a><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#branin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.branin" title="Permalink to this definition">¶</a></dt>
+<dd><p>The Branin-Hoo function, rescaled to have zero mean and unit variance over <span class="math notranslate nohighlight">\([0, 1]^2\)</span>. See
+<span id="id1">[<a class="reference internal" href="../../index.html#id7" title="Victor Picheny, Tobias Wagner, and David Ginsbourger. A benchmark of kriging-based infill criteria for noisy optimization. Structural and Multidisciplinary Optimization, 48:, 09 2013. doi:10.1007/s00158-013-0919-4.">PWG13</a>]</span> for details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>x</strong> – The points at which to evaluate the function, with shape […, 2].</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The function values at <code class="docutils literal notranslate"><span class="pre">x</span></code>, with shape […, 1].</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.9)"><strong>ValueError</strong></a><strong> (or </strong><strong>InvalidArgumentError</strong><strong>)</strong> – If <code class="docutils literal notranslate"><span class="pre">x</span></code> has an invalid shape.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.utils.objectives.BRANIN_MINIMIZERS">
+<span class="sig-name descname"><span class="pre">BRANIN_MINIMIZERS</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#BRANIN_MINIMIZERS"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.BRANIN_MINIMIZERS" title="Permalink to this definition">¶</a></dt>
+<dd><p>The three global minimizers of the <a class="reference internal" href="#trieste.utils.objectives.branin" title="trieste.utils.objectives.branin"><code class="xref py py-func docutils literal notranslate"><span class="pre">branin()</span></code></a> function over <span class="math notranslate nohighlight">\([0, 1]^2\)</span>, with shape [3, 2]
+and dtype float64.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.utils.objectives.BRANIN_MINIMUM">
+<span class="sig-name descname"><span class="pre">BRANIN_MINIMUM</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#BRANIN_MINIMUM"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.BRANIN_MINIMUM" title="Permalink to this definition">¶</a></dt>
+<dd><p>The global minimum of the <a class="reference internal" href="#trieste.utils.objectives.branin" title="trieste.utils.objectives.branin"><code class="xref py py-func docutils literal notranslate"><span class="pre">branin()</span></code></a> function, with shape [1] and dtype float64.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.utils.objectives.gramacy_lee">
+<span class="sig-name descname"><span class="pre">gramacy_lee</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../type/index.html#trieste.type.TensorType" title="trieste.type.TensorType"><span class="pre">trieste.type.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../type/index.html#trieste.type.TensorType" title="trieste.type.TensorType"><span class="pre">trieste.type.TensorType</span></a><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#gramacy_lee"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.gramacy_lee" title="Permalink to this definition">¶</a></dt>
+<dd><p>The Gramacy &amp; Lee function, typically evaluated over <span class="math notranslate nohighlight">\([0.5, 2.5]\)</span>. See
+<span id="id2">[<a class="reference internal" href="../../index.html#id15" title="Robert B Gramacy and Herbert KH Lee. Cases for the nugget in modeling computer experiments. Statistics and Computing, 22(3):713–722, 2012.">GL12</a>]</span> for details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>x</strong> – Where to evaluate the function, with shape […, 1].</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The function values, with shape […, 1].</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.9)"><strong>ValueError</strong></a><strong> (or </strong><strong>InvalidArgumentError</strong><strong>)</strong> – If <code class="docutils literal notranslate"><span class="pre">x</span></code> has an invalid shape.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.utils.objectives.GRAMACY_LEE_MINIMIZER">
+<span class="sig-name descname"><span class="pre">GRAMACY_LEE_MINIMIZER</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#GRAMACY_LEE_MINIMIZER"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.GRAMACY_LEE_MINIMIZER" title="Permalink to this definition">¶</a></dt>
+<dd><p>The global minimizer of the <a class="reference internal" href="#trieste.utils.objectives.gramacy_lee" title="trieste.utils.objectives.gramacy_lee"><code class="xref py py-func docutils literal notranslate"><span class="pre">gramacy_lee()</span></code></a> function over <span class="math notranslate nohighlight">\([0.5, 2.5]\)</span>, with shape [1, 1]
+and dtype float64.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.utils.objectives.GRAMACY_LEE_MINIMUM">
+<span class="sig-name descname"><span class="pre">GRAMACY_LEE_MINIMUM</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#GRAMACY_LEE_MINIMUM"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.GRAMACY_LEE_MINIMUM" title="Permalink to this definition">¶</a></dt>
+<dd><p>The global minimum of the <a class="reference internal" href="#trieste.utils.objectives.gramacy_lee" title="trieste.utils.objectives.gramacy_lee"><code class="xref py py-func docutils literal notranslate"><span class="pre">gramacy_lee()</span></code></a> function over <span class="math notranslate nohighlight">\([0.5, 2.5]\)</span>, with shape [1] and
+dtype float64.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.utils.objectives.logarithmic_goldstein_price">
+<span class="sig-name descname"><span class="pre">logarithmic_goldstein_price</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../type/index.html#trieste.type.TensorType" title="trieste.type.TensorType"><span class="pre">trieste.type.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../type/index.html#trieste.type.TensorType" title="trieste.type.TensorType"><span class="pre">trieste.type.TensorType</span></a><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#logarithmic_goldstein_price"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.logarithmic_goldstein_price" title="Permalink to this definition">¶</a></dt>
+<dd><p>A logarithmic form of the Goldstein-Price function, with zero mean and unit variance over
+<span class="math notranslate nohighlight">\([0, 1]^2\)</span>. See <span id="id3">[<a class="reference internal" href="../../index.html#id7" title="Victor Picheny, Tobias Wagner, and David Ginsbourger. A benchmark of kriging-based infill criteria for noisy optimization. Structural and Multidisciplinary Optimization, 48:, 09 2013. doi:10.1007/s00158-013-0919-4.">PWG13</a>]</span> for details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>x</strong> – The points at which to evaluate the function, with shape […, 2].</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The function values at <code class="docutils literal notranslate"><span class="pre">x</span></code>, with shape […, 1].</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.9)"><strong>ValueError</strong></a><strong> (or </strong><strong>InvalidArgumentError</strong><strong>)</strong> – If <code class="docutils literal notranslate"><span class="pre">x</span></code> has an invalid shape.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.utils.objectives.LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER">
+<span class="sig-name descname"><span class="pre">LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.LOGARITHMIC_GOLDSTEIN_PRICE_MINIMIZER" title="Permalink to this definition">¶</a></dt>
+<dd><p>The global minimizer for the <a class="reference internal" href="#trieste.utils.objectives.logarithmic_goldstein_price" title="trieste.utils.objectives.logarithmic_goldstein_price"><code class="xref py py-func docutils literal notranslate"><span class="pre">logarithmic_goldstein_price()</span></code></a> function, with shape [1, 2] and
+dtype float64.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.utils.objectives.LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM">
+<span class="sig-name descname"><span class="pre">LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.LOGARITHMIC_GOLDSTEIN_PRICE_MINIMUM" title="Permalink to this definition">¶</a></dt>
+<dd><p>The global minimum for the <a class="reference internal" href="#trieste.utils.objectives.logarithmic_goldstein_price" title="trieste.utils.objectives.logarithmic_goldstein_price"><code class="xref py py-func docutils literal notranslate"><span class="pre">logarithmic_goldstein_price()</span></code></a> function, with shape [1] and dtype
+float64.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.utils.objectives.hartmann_3">
+<span class="sig-name descname"><span class="pre">hartmann_3</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../type/index.html#trieste.type.TensorType" title="trieste.type.TensorType"><span class="pre">trieste.type.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../type/index.html#trieste.type.TensorType" title="trieste.type.TensorType"><span class="pre">trieste.type.TensorType</span></a><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#hartmann_3"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.hartmann_3" title="Permalink to this definition">¶</a></dt>
+<dd><p>The Hartmann 3 test function over <span class="math notranslate nohighlight">\([0, 1]^3\)</span>. This function has 3 local
+and one global minima. See <a class="reference external" href="https://www.sfu.ca/~ssurjano/hart3.html">https://www.sfu.ca/~ssurjano/hart3.html</a> for details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>x</strong> – The points at which to evaluate the function, with shape […, 3].</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The function values at <code class="docutils literal notranslate"><span class="pre">x</span></code>, with shape […, 1].</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.9)"><strong>ValueError</strong></a><strong> (or </strong><strong>InvalidArgumentError</strong><strong>)</strong> – If <code class="docutils literal notranslate"><span class="pre">x</span></code> has an invalid shape.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.utils.objectives.HARTMANN_3_MINIMIZER">
+<span class="sig-name descname"><span class="pre">HARTMANN_3_MINIMIZER</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#HARTMANN_3_MINIMIZER"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.HARTMANN_3_MINIMIZER" title="Permalink to this definition">¶</a></dt>
+<dd><p>The global minimizer for the <a class="reference internal" href="#trieste.utils.objectives.hartmann_3" title="trieste.utils.objectives.hartmann_3"><code class="xref py py-func docutils literal notranslate"><span class="pre">hartmann_3()</span></code></a> function, with shape [1, 3] and
+dtype float64.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.utils.objectives.HARTMANN_3_MINIMUM">
+<span class="sig-name descname"><span class="pre">HARTMANN_3_MINIMUM</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#HARTMANN_3_MINIMUM"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.HARTMANN_3_MINIMUM" title="Permalink to this definition">¶</a></dt>
+<dd><p>The global minimum for the <a class="reference internal" href="#trieste.utils.objectives.hartmann_3" title="trieste.utils.objectives.hartmann_3"><code class="xref py py-func docutils literal notranslate"><span class="pre">hartmann_3()</span></code></a> function, with shape [1] and dtype
+float64.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.utils.objectives.shekel_4">
+<span class="sig-name descname"><span class="pre">shekel_4</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../type/index.html#trieste.type.TensorType" title="trieste.type.TensorType"><span class="pre">trieste.type.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../type/index.html#trieste.type.TensorType" title="trieste.type.TensorType"><span class="pre">trieste.type.TensorType</span></a><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#shekel_4"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.shekel_4" title="Permalink to this definition">¶</a></dt>
+<dd><p>The Shekel test function over <span class="math notranslate nohighlight">\([0, 1]^4\)</span>. This function has ten local
+minima and a single global minimum. See <a class="reference external" href="https://www.sfu.ca/~ssurjano/shekel.html">https://www.sfu.ca/~ssurjano/shekel.html</a> for details.
+Note that we rescale the original problem, which is typically defined
+over <cite>[0, 10]^4</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>x</strong> – The points at which to evaluate the function, with shape […, 4].</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The function values at <code class="docutils literal notranslate"><span class="pre">x</span></code>, with shape […, 1].</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.9)"><strong>ValueError</strong></a><strong> (or </strong><strong>InvalidArgumentError</strong><strong>)</strong> – If <code class="docutils literal notranslate"><span class="pre">x</span></code> has an invalid shape.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.utils.objectives.SHEKEL_4_MINIMIZER">
+<span class="sig-name descname"><span class="pre">SHEKEL_4_MINIMIZER</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#SHEKEL_4_MINIMIZER"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.SHEKEL_4_MINIMIZER" title="Permalink to this definition">¶</a></dt>
+<dd><p>The global minimizer for the <a class="reference internal" href="#trieste.utils.objectives.shekel_4" title="trieste.utils.objectives.shekel_4"><code class="xref py py-func docutils literal notranslate"><span class="pre">shekel_4()</span></code></a> function, with shape [1, 4] and
+dtype float64.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.utils.objectives.SHEKEL_4_MINIMUM">
+<span class="sig-name descname"><span class="pre">SHEKEL_4_MINIMUM</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#SHEKEL_4_MINIMUM"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.SHEKEL_4_MINIMUM" title="Permalink to this definition">¶</a></dt>
+<dd><p>The global minimum for the <a class="reference internal" href="#trieste.utils.objectives.shekel_4" title="trieste.utils.objectives.shekel_4"><code class="xref py py-func docutils literal notranslate"><span class="pre">shekel_4()</span></code></a> function, with shape [1] and dtype
+float64.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.utils.objectives.rosenbrock_4">
+<span class="sig-name descname"><span class="pre">rosenbrock_4</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../type/index.html#trieste.type.TensorType" title="trieste.type.TensorType"><span class="pre">trieste.type.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../type/index.html#trieste.type.TensorType" title="trieste.type.TensorType"><span class="pre">trieste.type.TensorType</span></a><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#rosenbrock_4"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.rosenbrock_4" title="Permalink to this definition">¶</a></dt>
+<dd><p>The Rosenbrock function, rescaled to have zero mean and unit variance over <span class="math notranslate nohighlight">\([0, 1]^4. See
+:cite:\)</span> for details.
+This function (also known as the Banana function) is unimodal, however the minima
+lies in a narrow valley.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>x</strong> – The points at which to evaluate the function, with shape […, 4].</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The function values at <code class="docutils literal notranslate"><span class="pre">x</span></code>, with shape […, 1].</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.9)"><strong>ValueError</strong></a><strong> (or </strong><strong>InvalidArgumentError</strong><strong>)</strong> – If <code class="docutils literal notranslate"><span class="pre">x</span></code> has an invalid shape.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.utils.objectives.ROSENBROCK_4_MINIMIZER">
+<span class="sig-name descname"><span class="pre">ROSENBROCK_4_MINIMIZER</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#ROSENBROCK_4_MINIMIZER"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.ROSENBROCK_4_MINIMIZER" title="Permalink to this definition">¶</a></dt>
+<dd><p>The global minimizer for the <a class="reference internal" href="#trieste.utils.objectives.rosenbrock_4" title="trieste.utils.objectives.rosenbrock_4"><code class="xref py py-func docutils literal notranslate"><span class="pre">rosenbrock_4()</span></code></a> function, with shape [1, 4] and
+dtype float64.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.utils.objectives.ROSENBROCK_4_MINIMUM">
+<span class="sig-name descname"><span class="pre">ROSENBROCK_4_MINIMUM</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#ROSENBROCK_4_MINIMUM"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.ROSENBROCK_4_MINIMUM" title="Permalink to this definition">¶</a></dt>
+<dd><p>The global minimum for the <a class="reference internal" href="#trieste.utils.objectives.rosenbrock_4" title="trieste.utils.objectives.rosenbrock_4"><code class="xref py py-func docutils literal notranslate"><span class="pre">rosenbrock_4()</span></code></a> function, with shape [1] and dtype
+float64.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.utils.objectives.ackley_5">
+<span class="sig-name descname"><span class="pre">ackley_5</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../type/index.html#trieste.type.TensorType" title="trieste.type.TensorType"><span class="pre">trieste.type.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../type/index.html#trieste.type.TensorType" title="trieste.type.TensorType"><span class="pre">trieste.type.TensorType</span></a><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#ackley_5"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.ackley_5" title="Permalink to this definition">¶</a></dt>
+<dd><p>The Ackley test function over <span class="math notranslate nohighlight">\([0, 1]^5\)</span>. This function has
+many local minima and a global minima. See <a class="reference external" href="https://www.sfu.ca/~ssurjano/ackley.html">https://www.sfu.ca/~ssurjano/ackley.html</a>
+for details.
+Note that we rescale the original problem, which is typically defined
+over <cite>[-32.768, 32.768]</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>x</strong> – The points at which to evaluate the function, with shape […, 5].</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The function values at <code class="docutils literal notranslate"><span class="pre">x</span></code>, with shape […, 1].</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.9)"><strong>ValueError</strong></a><strong> (or </strong><strong>InvalidArgumentError</strong><strong>)</strong> – If <code class="docutils literal notranslate"><span class="pre">x</span></code> has an invalid shape.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.utils.objectives.ACKLEY_5_MINIMIZER">
+<span class="sig-name descname"><span class="pre">ACKLEY_5_MINIMIZER</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#ACKLEY_5_MINIMIZER"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.ACKLEY_5_MINIMIZER" title="Permalink to this definition">¶</a></dt>
+<dd><p>The global minimizer for the <a class="reference internal" href="#trieste.utils.objectives.ackley_5" title="trieste.utils.objectives.ackley_5"><code class="xref py py-func docutils literal notranslate"><span class="pre">ackley_5()</span></code></a> function, with shape [1, 5] and
+dtype float64.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.utils.objectives.ACKLEY_5_MINIMUM">
+<span class="sig-name descname"><span class="pre">ACKLEY_5_MINIMUM</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#ACKLEY_5_MINIMUM"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.ACKLEY_5_MINIMUM" title="Permalink to this definition">¶</a></dt>
+<dd><p>The global minimum for the <a class="reference internal" href="#trieste.utils.objectives.ackley_5" title="trieste.utils.objectives.ackley_5"><code class="xref py py-func docutils literal notranslate"><span class="pre">ackley_5()</span></code></a> function, with shape [1] and dtype
+float64.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.utils.objectives.hartmann_6">
+<span class="sig-name descname"><span class="pre">hartmann_6</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../type/index.html#trieste.type.TensorType" title="trieste.type.TensorType"><span class="pre">trieste.type.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../type/index.html#trieste.type.TensorType" title="trieste.type.TensorType"><span class="pre">trieste.type.TensorType</span></a><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#hartmann_6"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.hartmann_6" title="Permalink to this definition">¶</a></dt>
+<dd><p>The Hartmann 6 test function over <span class="math notranslate nohighlight">\([0, 1]^6\)</span>. This function has
+6 local and one global minima. See <a class="reference external" href="https://www.sfu.ca/~ssurjano/hart6.html">https://www.sfu.ca/~ssurjano/hart6.html</a>
+for details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>x</strong> – The points at which to evaluate the function, with shape […, 6].</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The function values at <code class="docutils literal notranslate"><span class="pre">x</span></code>, with shape […, 1].</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.9)"><strong>ValueError</strong></a><strong> (or </strong><strong>InvalidArgumentError</strong><strong>)</strong> – If <code class="docutils literal notranslate"><span class="pre">x</span></code> has an invalid shape.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.utils.objectives.HARTMANN_6_MINIMIZER">
+<span class="sig-name descname"><span class="pre">HARTMANN_6_MINIMIZER</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#HARTMANN_6_MINIMIZER"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.HARTMANN_6_MINIMIZER" title="Permalink to this definition">¶</a></dt>
+<dd><p>The global minimizer for the <a class="reference internal" href="#trieste.utils.objectives.hartmann_6" title="trieste.utils.objectives.hartmann_6"><code class="xref py py-func docutils literal notranslate"><span class="pre">hartmann_6()</span></code></a> function, with shape [1, 6] and
+dtype float64.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.utils.objectives.HARTMANN_6_MINIMUM">
+<span class="sig-name descname"><span class="pre">HARTMANN_6_MINIMUM</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#HARTMANN_6_MINIMUM"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.HARTMANN_6_MINIMUM" title="Permalink to this definition">¶</a></dt>
+<dd><p>The global minimum for the <a class="reference internal" href="#trieste.utils.objectives.hartmann_6" title="trieste.utils.objectives.hartmann_6"><code class="xref py py-func docutils literal notranslate"><span class="pre">hartmann_6()</span></code></a> function, with shape [1] and dtype
+float64.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.utils.objectives.mk_observer">
+<span class="sig-name descname"><span class="pre">mk_observer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">objective</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.9)"><span class="pre">collections.abc.Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../type/index.html#trieste.type.TensorType" title="trieste.type.TensorType"><span class="pre">trieste.type.TensorType</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../type/index.html#trieste.type.TensorType" title="trieste.type.TensorType"><span class="pre">trieste.type.TensorType</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../observer/index.html#trieste.observer.SingleObserver" title="trieste.observer.SingleObserver"><span class="pre">trieste.observer.SingleObserver</span></a><a class="reference internal" href="../../../../_modules/trieste/utils/objectives.html#mk_observer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.objectives.mk_observer" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">mk_observer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">objective</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.9)"><span class="pre">collections.abc.Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../type/index.html#trieste.type.TensorType" title="trieste.type.TensorType"><span class="pre">trieste.type.TensorType</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../type/index.html#trieste.type.TensorType" title="trieste.type.TensorType"><span class="pre">trieste.type.TensorType</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../observer/index.html#trieste.observer.MultiObserver" title="trieste.observer.MultiObserver"><span class="pre">trieste.observer.MultiObserver</span></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>objective</strong> – An objective function designed to be used with a single data set and model.</p></li>
+<li><p><strong>key</strong> – An optional key to use to access the data from the observer result.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>An observer returning the data from <code class="docutils literal notranslate"><span class="pre">objective</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+
+
+              </div>
+              
+              
+          </main>
+          
+
+      </div>
+    </div>
+  
+  <script src="../../../../_static/js/index.1c5a1a01449ed65a7b51.js"></script>
+
+  <footer class="footer mt-5 mt-md-0">
+  <div class="container">
+    
+    <div class="footer-item">
+      <p class="copyright">
+    &copy; Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.<br/>
+</p>
+    </div>
+    
+    <div class="footer-item">
+      <p class="sphinx-version">
+Created using <a href="http://sphinx-doc.org/">Sphinx</a> 4.0.2.<br/>
+</p>
+    </div>
+    
+  </div>
+</footer>
+  </body>
+</html>

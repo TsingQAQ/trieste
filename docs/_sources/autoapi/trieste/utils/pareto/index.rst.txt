@@ -1,0 +1,90 @@
+:mod:`trieste.utils.pareto`
+===========================
+
+.. py:module:: trieste.utils.pareto
+
+.. autoapi-nested-parse::
+
+   This module contains functions and classes for Pareto based multi-objective optimization. 
+
+
+
+Module Contents
+---------------
+
+.. function:: non_dominated(observations: trieste.type.TensorType) -> tuple[trieste.type.TensorType, trieste.type.TensorType]
+
+   Computes the non-dominated set for a set of data points.
+   if there are duplicate point(s) in the non-dominated set, this function will return
+   as it is without removing the duplicate.
+
+   :param observations: set of points with shape [N,D]
+   :return: tf.Tensor of the non-dominated set [P,D] and the degree of dominance [N],
+       P is the number of points in pareto front
+       dominances gives the number of dominating points for each data point
+
+
+
+.. class:: _BoundedVolumes(lower_idx: tensorflow.Tensor, upper_idx: tensorflow.Tensor)
+
+
+   A :class:`_BoundedVolumes` store the index of the Pareto front to form lower and upper
+   bounds of the pseudo cells decomposition.
+
+   Construct bounded volumes.
+
+   :param lower_idx: the lowerbounds index of the volumes
+   :param upper_idx: the upperbounds index of the volumes
+
+
+.. class:: Pareto(observations: trieste.type.TensorType, *, jitter: float = DEFAULTS.JITTER)
+
+
+   A :class:`Pareto` Construct a Pareto set.
+   Stores a Pareto set and calculates the cell bounds covering the non-dominated region.
+   The latter is needed for certain multiobjective acquisition functions.
+
+   For hypervolume-based multiobjective optimisation with n>2 objectives, this class
+   implements branch and bound procedure algorithm. a divide and conquer method introduced
+   in :cite:`Couckuyt2012`.
+
+   :param observations: The observations for all objectives, with shape [N, D].
+   :raise ValueError (or InvalidArgumentError): If ``observations`` has an invalid shape.
+
+   .. method:: hypervolume_indicator(self, reference: trieste.type.TensorType) -> trieste.type.TensorType
+
+      Calculate the hypervolume indicator
+      The hypervolume indicator is the volume of the dominated region.
+
+      :param reference: a reference point to use, with shape [D].
+          Defines the upper bound of the hypervolume.
+          Should be equal or bigger than the anti-ideal point of the Pareto set.
+          For comparing results across runs, the same reference point must be used.
+      :return: hypervolume indicator
+      :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
+          shape.
+      :raise `tf.errors.InvalidArgumentError`: If ``reference`` is less than the anti-ideal point
+          in any dimension.
+
+
+   .. method:: hypercell_bounds(self, anti_reference: trieste.type.TensorType, reference: trieste.type.TensorType) -> tuple[trieste.type.TensorType, trieste.type.TensorType]
+
+      Get the partitioned hypercell's lower and upper bounds.
+
+      :param anti_reference: a worst point to use with shape [D].
+          Defines the lower bound of the hypercell
+      :param reference: a reference point to use, with shape [D].
+          Defines the upper bound of the hypervolume.
+          Should be equal to or bigger than the anti-ideal point of the Pareto set.
+          For comparing results across runs, the same reference point must be used.
+      :return: lower, upper bounds of the partitioned cell
+      :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid
+          shape.
+
+
+
+.. function:: get_reference_point(front: trieste.type.TensorType) -> trieste.type.TensorType
+
+   reference point calculation method
+
+

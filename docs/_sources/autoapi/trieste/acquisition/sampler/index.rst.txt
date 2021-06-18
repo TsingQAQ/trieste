@@ -1,0 +1,165 @@
+:mod:`trieste.acquisition.sampler`
+==================================
+
+.. py:module:: trieste.acquisition.sampler
+
+.. autoapi-nested-parse::
+
+   This module is the home of the sampling functionality required by Trieste's
+   acquisiiton functions.
+
+
+
+Module Contents
+---------------
+
+.. class:: Sampler(sample_size: int, model: trieste.models.ProbabilisticModel)
+
+
+   Bases: :py:obj:`abc.ABC`
+
+   An :class:`Sampler` samples a specific quantity according to an
+   underlying :class:`ProbabilisticModel`.
+
+   :param sample_size: The desired number of samples.
+   :param model: The model to sample from.
+   :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+
+   .. method:: sample(self, at: trieste.type.TensorType) -> trieste.type.TensorType
+      :abstractmethod:
+
+      :param at: Input points that define the sampler.
+      :return: Samples.
+
+
+
+.. class:: DiscreteThompsonSampler(sample_size: int, model: trieste.models.ProbabilisticModel)
+
+
+   Bases: :py:obj:`Sampler`
+
+   This sampler provides approximate Thompson samples of the objective function's
+   maximiser :math:`x^*` over a discrete set of input locations.
+
+   :param sample_size: The desired number of samples.
+   :param model: The model to sample from.
+   :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+
+   .. method:: sample(self, at: trieste.type.TensorType) -> trieste.type.TensorType
+
+      Return approximate samples from of the objective function's minimser. We return only
+      unique samples.
+
+      :param at: Where to sample the predictive distribution, with shape `[N, D]`, for points
+          of dimension `D`.
+      :return: The samples, of shape `[S, D]`, where `S` is the `sample_size`.
+      :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape.
+
+
+
+.. class:: GumbelSampler(sample_size: int, model: trieste.models.ProbabilisticModel)
+
+
+   Bases: :py:obj:`Sampler`
+
+   This sampler follows :cite:`wang2017max` and yields approximate samples of the objective
+   minimum value :math:`y^*` via the empirical cdf :math:`\operatorname{Pr}(y^*<y)`. The cdf
+   is approximated by a Gumbel distribution
+
+   .. math:: \mathcal G(y; a, b) = 1 - e^{-e^\frac{y - a}{b}}
+
+   where :math:`a, b \in \mathbb R` are chosen such that the quartiles of the Gumbel and cdf match.
+   Samples are obtained via the Gumbel distribution by sampling :math:`r` uniformly from
+   :math:`[0, 1]` and applying the inverse probability integral transform
+   :math:`y = \mathcal G^{-1}(r; a, b)`.
+
+   :param sample_size: The desired number of samples.
+   :param model: The model to sample from.
+   :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+
+   .. method:: sample(self, at: trieste.type.TensorType) -> trieste.type.TensorType
+
+      Return approximate samples from of the objective function's minimum value.
+
+      :param at: Points at where to fit the Gumbel distribution, with shape `[N, D]`, for points
+          of dimension `D`. We recommend scaling `N` with search space dimension.
+      :return: The samples, of shape `[S, 1]`, where `S` is the `sample_size`.
+      :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape.
+
+
+
+.. class:: IndependentReparametrizationSampler(sample_size: int, model: trieste.models.ProbabilisticModel)
+
+
+   Bases: :py:obj:`Sampler`
+
+   This sampler employs the *reparameterization trick* to approximate samples from a
+   :class:`ProbabilisticModel`\ 's predictive distribution as
+
+   .. math:: x \mapsto \mu(x) + \epsilon \sigma(x)
+
+   where :math:`\epsilon \sim \mathcal N (0, 1)` is constant for a given sampler, thus ensuring
+   samples form a continuous curve.
+
+   :param sample_size: The number of samples to take at each point. Must be positive.
+   :param model: The model to sample from.
+   :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+
+   .. method:: sample(self, at: trieste.type.TensorType) -> trieste.type.TensorType
+
+      Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
+      :meth:`sample`, for any given :class:`IndependentReparametrizationSampler` and ``at``, will
+      produce the exact same samples. Calls to :meth:`sample` on *different*
+      :class:`IndependentReparametrizationSampler` instances will produce different samples.
+
+      :param at: Where to sample the predictive distribution, with shape `[..., 1, D]`, for points
+          of dimension `D`.
+      :return: The samples, of shape `[..., S, 1, L]`, where `S` is the `sample_size` and `L` is
+          the number of latent model dimensions.
+      :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape.
+
+
+
+.. class:: BatchReparametrizationSampler(sample_size: int, model: trieste.models.ProbabilisticModel)
+
+
+   Bases: :py:obj:`Sampler`
+
+   This sampler employs the *reparameterization trick* to approximate batches of samples from a
+   :class:`ProbabilisticModel`\ 's predictive joint distribution as
+
+   .. math:: x \mapsto \mu(x) + \epsilon L(x)
+
+   where :math:`L` is the Cholesky factor s.t. :math:`LL^T` is the covariance, and
+   :math:`\epsilon \sim \mathcal N (0, 1)` is constant for a given sampler, thus ensuring samples
+   form a continuous curve.
+
+   :param sample_size: The number of samples for each batch of points. Must be positive.
+   :param model: The model to sample from.
+   :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+
+   .. method:: sample(self, at: trieste.type.TensorType, *, jitter: float = DEFAULTS.JITTER) -> trieste.type.TensorType
+
+      Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
+      :meth:`sample`, for any given :class:`BatchReparametrizationSampler` and ``at``, will
+      produce the exact same samples. Calls to :meth:`sample` on *different*
+      :class:`BatchReparametrizationSampler` instances will produce different samples.
+
+      :param at: Batches of query points at which to sample the predictive distribution, with
+          shape `[..., B, D]`, for batches of size `B` of points of dimension `D`. Must have a
+          consistent batch size across all calls to :meth:`sample` for any given
+          :class:`BatchReparametrizationSampler`.
+      :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+          the covariance matrix.
+      :return: The samples, of shape `[..., S, B, L]`, where `S` is the `sample_size`, `B` the
+          number of points per batch, and `L` the dimension of the model's predictive
+          distribution.
+      :raise ValueError (or InvalidArgumentError): If any of the following are true:
+
+          - ``at`` is a scalar.
+          - The batch size `B` of ``at`` is not positive.
+          - The batch size `B` of ``at`` differs from that of previous calls.
+          - ``jitter`` is negative.
+
+
+

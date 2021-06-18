@@ -1,0 +1,684 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.models.model_interfaces &#8212; trieste 0.5.1 documentation</title>
+    
+  <link href="../../../_static/css/theme.css" rel="stylesheet" />
+  <link href="../../../_static/css/index.c5995385ac14fb8791e8eb36b4908be2.css" rel="stylesheet" />
+
+    
+  <link rel="stylesheet"
+    href="../../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    
+      
+
+    
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    
+  <link rel="preload" as="script" href="../../../_static/js/index.1c5a1a01449ed65a7b51.js">
+
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="en" />
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="80">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+    <nav class="navbar navbar-light navbar-expand-lg bg-light fixed-top bd-navbar" id="navbar-main"><div class="container-xl">
+
+  <div id="navbar-start">
+    
+    
+
+<a class="navbar-brand" href="../../../index.html">
+  <img src="../../../_static/logo.png" class="logo" alt="logo">
+</a>
+
+
+    
+  </div>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-collapsible" aria-controls="navbar-collapsible" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  
+  <div id="navbar-collapsible" class="col-lg-9 collapse navbar-collapse">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <ul id="navbar-main-elements" class="navbar-nav">
+    <li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../index.html">
+  Trieste
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../autoapi/trieste/index.html">
+  API reference
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../tutorials.html">
+  Tutorials
+ </a>
+</li>
+
+    
+</ul>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+        <li class="nav-item">
+          <a class="nav-link" href="https://github.com/secondmind-labs/trieste" rel="noopener" target="_blank" title="GitHub">
+            <span><i class="fab fa-github-square"></i></span>
+            <label class="sr-only">GitHub</label>
+          </a>
+        </li>
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+    </nav>
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+            
+            <!-- Only show if we have sidebars configured, else just a small margin  -->
+            <div class="col-12 col-md-3 bd-sidebar"><form class="bd-search d-flex align-items-center" action="../../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+  <div class="bd-toc-item active">
+    
+  </div>
+</nav>
+            </div>
+            
+          
+
+          
+          <div class="d-none d-xl-block col-xl-2 bd-toc">
+            
+          </div>
+          
+
+          
+          
+            
+          
+          <main class="col-12 col-md-9 col-xl-7 py-md-5 pl-md-5 pr-md-4 bd-content" role="main">
+              
+              <div>
+                
+  <h1>Source code for trieste.models.model_interfaces</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2020 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span> <span class="nn">collections.abc</span> <span class="kn">import</span> <span class="n">Callable</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">TypeVar</span>
+
+<span class="kn">import</span> <span class="nn">gpflow</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">from</span> <span class="nn">gpflow.models</span> <span class="kn">import</span> <span class="n">GPR</span><span class="p">,</span> <span class="n">SGPR</span><span class="p">,</span> <span class="n">SVGP</span><span class="p">,</span> <span class="n">VGP</span><span class="p">,</span> <span class="n">GPModel</span>
+
+<span class="kn">from</span> <span class="nn">..data</span> <span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span> <span class="nn">..type</span> <span class="kn">import</span> <span class="n">TensorType</span>
+<span class="kn">from</span> <span class="nn">..utils</span> <span class="kn">import</span> <span class="n">DEFAULTS</span>
+<span class="kn">from</span> <span class="nn">.optimizer</span> <span class="kn">import</span> <span class="n">Optimizer</span>
+
+
+<div class="viewcode-block" id="ProbabilisticModel"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.ProbabilisticModel">[docs]</a><span class="k">class</span> <span class="nc">ProbabilisticModel</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A probabilistic model.&quot;&quot;&quot;</span>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="ProbabilisticModel.predict"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.ProbabilisticModel.predict">[docs]</a>    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the mean and variance of the independent marginal distributions at each point in</span>
+<span class="sd">        ``query_points``.</span>
+
+<span class="sd">        This is essentially a convenience method for :meth:`predict_joint`, where non-event</span>
+<span class="sd">        dimensions of ``query_points`` are all interpreted as broadcasting dimensions instead of</span>
+<span class="sd">        batch dimensions, and the covariance is squeezed to remove redundant nesting.</span>
+
+<span class="sd">        :param query_points: The points at which to make predictions, of shape [..., D].</span>
+<span class="sd">        :return: The mean and variance of the independent marginal distributions at each point in</span>
+<span class="sd">            ``query_points``. For a predictive distribution with event shape E, the mean and</span>
+<span class="sd">            variance will both have shape [...] + E.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="ProbabilisticModel.predict_joint"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.ProbabilisticModel.predict_joint">[docs]</a>    <span class="k">def</span> <span class="nf">predict_joint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param query_points: The points at which to make predictions, of shape [..., B, D].</span>
+<span class="sd">        :return: The mean and covariance of the joint marginal distribution at each batch of points</span>
+<span class="sd">            in ``query_points``. For a predictive distribution with event shape E, the mean will</span>
+<span class="sd">            have shape [..., B] + E, and the covariance shape [...] + E + [B, B].</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="ProbabilisticModel.sample"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.ProbabilisticModel.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return ``num_samples`` samples from the independent marginal distributions at</span>
+<span class="sd">        ``query_points``.</span>
+
+<span class="sd">        :param query_points: The points at which to sample, with shape [..., N, D].</span>
+<span class="sd">        :param num_samples: The number of samples at each point.</span>
+<span class="sd">        :return: The samples. For a predictive distribution with event shape E, this has shape</span>
+<span class="sd">            [..., S, N] + E, where S is the number of samples.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+<div class="viewcode-block" id="ProbabilisticModel.predict_y"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.ProbabilisticModel.predict_y">[docs]</a>    <span class="k">def</span> <span class="nf">predict_y</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the mean and variance of the independent marginal distributions at each point in</span>
+<span class="sd">        ``query_points`` for the observations, including noise contributions.</span>
+
+<span class="sd">        Note that this is not supported by all models.</span>
+
+<span class="sd">        :param query_points: The points at which to make predictions, of shape [..., D].</span>
+<span class="sd">        :return: The mean and variance of the independent marginal distributions at each point in</span>
+<span class="sd">            ``query_points``. For a predictive distribution with event shape E, the mean and</span>
+<span class="sd">            variance will both have shape [...] + E.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Model </span><span class="si">{</span><span class="bp">self</span><span class="si">!r}</span><span class="s2"> does not support predicting observations, just the latent function&quot;</span></div></div>
+        <span class="p">)</span>
+
+
+<div class="viewcode-block" id="TrainableProbabilisticModel"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.TrainableProbabilisticModel">[docs]</a><span class="k">class</span> <span class="nc">TrainableProbabilisticModel</span><span class="p">(</span><span class="n">ProbabilisticModel</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A trainable probabilistic model.&quot;&quot;&quot;</span>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="TrainableProbabilisticModel.update"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.TrainableProbabilisticModel.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update the model given the specified ``dataset``. Does not train the model.</span>
+
+<span class="sd">        :param dataset: The data with which to update the model.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="TrainableProbabilisticModel.optimize"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.TrainableProbabilisticModel.optimize">[docs]</a>    <span class="k">def</span> <span class="nf">optimize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Optimize the model objective with respect to (hyper)parameters given the specified</span>
+<span class="sd">        ``dataset``.</span>
+
+<span class="sd">        :param dataset: The data with which to train the model.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div></div>
+
+
+<div class="viewcode-block" id="ModelStack"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.ModelStack">[docs]</a><span class="k">class</span> <span class="nc">ModelStack</span><span class="p">(</span><span class="n">TrainableProbabilisticModel</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A :class:`ModelStack` is a wrapper around a number of :class:`TrainableProbabilisticModel`\ s.</span>
+<span class="sd">    It combines the outputs of each model for predictions and sampling, and delegates training data</span>
+<span class="sd">    to each model for updates and optimization.</span>
+
+<span class="sd">    **Note:** Only supports vector outputs (i.e. with event shape [E]). Outputs for any two models</span>
+<span class="sd">    are assumed independent. Each model may itself be single- or multi-output, and any one</span>
+<span class="sd">    multi-output model may have dependence between its outputs. When we speak of *event size* in</span>
+<span class="sd">    this class, we mean the output dimension for a given :class:`TrainableProbabilisticModel`,</span>
+<span class="sd">    whether that is the :class:`ModelStack` itself, or one of the subsidiary</span>
+<span class="sd">    :class:`TrainableProbabilisticModel`\ s within the :class:`ModelStack`. Of course, the event</span>
+<span class="sd">    size for a :class:`ModelStack` will be the sum of the event sizes of each subsidiary model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model_with_event_size</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TrainableProbabilisticModel</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
+        <span class="o">*</span><span class="n">models_with_event_sizes</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TrainableProbabilisticModel</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
+    <span class="p">):</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The order of individual models specified at :meth:`__init__` determines the order of the</span>
+<span class="sd">        :class:`ModelStack` output dimensions.</span>
+
+<span class="sd">        :param model_with_event_size: The first model, and the size of its output events.</span>
+<span class="sd">            **Note:** This is a separate parameter to ``models_with_event_sizes`` simply so that the</span>
+<span class="sd">            method signature requires at least one model. It is not treated specially.</span>
+<span class="sd">        :param \*models_with_event_sizes: The other models, and sizes of their output events.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_event_sizes</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">model_with_event_size</span><span class="p">,)</span> <span class="o">+</span> <span class="n">models_with_event_sizes</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ModelStack.predict"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.ModelStack.predict">[docs]</a>    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param query_points: The points at which to make predictions, of shape [..., D].</span>
+<span class="sd">        :return: The predictions from all the wrapped models, concatenated along the event axis in</span>
+<span class="sd">            the same order as they appear in :meth:`__init__`. If the wrapped models have predictive</span>
+<span class="sd">            distributions with event shapes [:math:`E_i`], the mean and variance will both have</span>
+<span class="sd">            shape [..., :math:`\sum_i E_i`].</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">means</span><span class="p">,</span> <span class="n">vars_</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">query_points</span><span class="p">)</span> <span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">means</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">vars_</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ModelStack.predict_joint"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.ModelStack.predict_joint">[docs]</a>    <span class="k">def</span> <span class="nf">predict_joint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param query_points: The points at which to make predictions, of shape [..., B, D].</span>
+<span class="sd">        :return: The predictions from all the wrapped models, concatenated along the event axis in</span>
+<span class="sd">            the same order as they appear in :meth:`__init__`. If the wrapped models have predictive</span>
+<span class="sd">            distributions with event shapes [:math:`E_i`], the mean will have shape</span>
+<span class="sd">            [..., B, :math:`\sum_i E_i`], and the covariance shape</span>
+<span class="sd">            [..., :math:`\sum_i E_i`, B, B].</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">means</span><span class="p">,</span> <span class="n">covs</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">model</span><span class="o">.</span><span class="n">predict_joint</span><span class="p">(</span><span class="n">query_points</span><span class="p">)</span> <span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">means</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">covs</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">3</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ModelStack.sample"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.ModelStack.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param query_points: The points at which to sample, with shape [..., N, D].</span>
+<span class="sd">        :param num_samples: The number of samples at each point.</span>
+<span class="sd">        :return: The samples from all the wrapped models, concatenated along the event axis. For</span>
+<span class="sd">            wrapped models with predictive distributions with event shapes [:math:`E_i`], this has</span>
+<span class="sd">            shape [..., S, N, :math:`\sum_i E_i`], where S is the number of samples.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">samples</span> <span class="o">=</span> <span class="p">[</span><span class="n">model</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">query_points</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">)</span> <span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">samples</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ModelStack.predict_y"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.ModelStack.predict_y">[docs]</a>    <span class="k">def</span> <span class="nf">predict_y</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param query_points: The points at which to make predictions, of shape [..., D].</span>
+<span class="sd">        :return: The predictions from all the wrapped models, concatenated along the event axis in</span>
+<span class="sd">            the same order as they appear in :meth:`__init__`. If the wrapped models have predictive</span>
+<span class="sd">            distributions with event shapes [:math:`E_i`], the mean and variance will both have</span>
+<span class="sd">            shape [..., :math:`\sum_i E_i`].</span>
+<span class="sd">        :raise NotImplementedError: If any of the models don&#39;t implement predict_y.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">means</span><span class="p">,</span> <span class="n">vars_</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">model</span><span class="o">.</span><span class="n">predict_y</span><span class="p">(</span><span class="n">query_points</span><span class="p">)</span> <span class="k">for</span> <span class="n">model</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">means</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">vars_</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="ModelStack.update"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.ModelStack.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update all the wrapped models on their corresponding data. The data for each model is</span>
+<span class="sd">        extracted by splitting the observations in ``dataset`` along the event axis according to the</span>
+<span class="sd">        event sizes specified at :meth:`__init__`.</span>
+
+<span class="sd">        :param dataset: The query points and observations for *all* the wrapped models.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">observations</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_event_sizes</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">model</span><span class="p">,</span> <span class="n">obs</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="p">,</span> <span class="n">observations</span><span class="p">):</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">Dataset</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">obs</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="ModelStack.optimize"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.ModelStack.optimize">[docs]</a>    <span class="k">def</span> <span class="nf">optimize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Optimize all the wrapped models on their corresponding data. The data for each model is</span>
+<span class="sd">        extracted by splitting the observations in ``dataset`` along the event axis according to the</span>
+<span class="sd">        event sizes specified at :meth:`__init__`.</span>
+
+<span class="sd">        :param dataset: The query points and observations for *all* the wrapped models.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">observations</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_event_sizes</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">model</span><span class="p">,</span> <span class="n">obs</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_models</span><span class="p">,</span> <span class="n">observations</span><span class="p">):</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">Dataset</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">obs</span><span class="p">))</span></div></div>
+
+
+<div class="viewcode-block" id="M"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.M">[docs]</a><span class="n">M</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">Module</span><span class="p">)</span></div>
+<span class="sd">&quot;&quot;&quot; A type variable bound to :class:`tf.Module`. &quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="module_deepcopy"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.module_deepcopy">[docs]</a><span class="k">def</span> <span class="nf">module_deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">M</span><span class="p">,</span> <span class="n">memo</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">object</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">M</span><span class="p">:</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function provides a workaround for `a bug`_ in TensorFlow Probability (fixed in `version</span>
+<span class="sd">    0.12`_) where a :class:`tf.Module` cannot be deep-copied if it has</span>
+<span class="sd">    :class:`tfp.bijectors.Bijector` instances on it. The function can be used to directly copy an</span>
+<span class="sd">    object ``self`` as e.g. ``module_deepcopy(self, {})``, but it is perhaps more useful as an</span>
+<span class="sd">    implemention for :meth:`__deepcopy__` on classes, where it can be used as follows:</span>
+
+<span class="sd">    .. _a bug: https://github.com/tensorflow/probability/issues/547</span>
+<span class="sd">    .. _version 0.12: https://github.com/tensorflow/probability/releases/tag/v0.12.1</span>
+
+<span class="sd">    .. testsetup:: *</span>
+
+<span class="sd">        &gt;&gt;&gt; import tensorflow_probability as tfp</span>
+
+<span class="sd">    &gt;&gt;&gt; class Foo(tf.Module):</span>
+<span class="sd">    ...     example_bijector = tfp.bijectors.Exp()</span>
+<span class="sd">    ...</span>
+<span class="sd">    ...     __deepcopy__ = module_deepcopy</span>
+
+<span class="sd">    Classes with this method can be deep-copied even if they contain</span>
+<span class="sd">    :class:`tfp.bijectors.Bijector`\ s.</span>
+
+<span class="sd">    :param self: The object to copy.</span>
+<span class="sd">    :param memo: References to existing deep-copied objects (by object :func:`id`).</span>
+<span class="sd">    :return: A deep-copy of ``self``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">gpflow</span><span class="o">.</span><span class="n">utilities</span><span class="o">.</span><span class="n">reset_cache_bijectors</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="n">new</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+    <span class="n">memo</span><span class="p">[</span><span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="p">)]</span> <span class="o">=</span> <span class="n">new</span>
+
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">new</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">memo</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">new</span></div>
+
+
+<div class="viewcode-block" id="GPflowPredictor"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.GPflowPredictor">[docs]</a><span class="k">class</span> <span class="nc">GPflowPredictor</span><span class="p">(</span><span class="n">ProbabilisticModel</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A trainable wrapper for a GPflow Gaussian process model.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param optimizer: The optimizer with which to train the model. Defaults to</span>
+<span class="sd">            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">optimizer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">optimizer</span> <span class="o">=</span> <span class="n">Optimizer</span><span class="p">(</span><span class="n">gpflow</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Scipy</span><span class="p">())</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span> <span class="o">=</span> <span class="n">optimizer</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="GPflowPredictor.optimizer"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.GPflowPredictor.optimizer">[docs]</a>    <span class="k">def</span> <span class="nf">optimizer</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optimizer</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;The optimizer with which to train the model.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span></div>
+
+    <span class="nd">@property</span>
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="GPflowPredictor.model"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.GPflowPredictor.model">[docs]</a>    <span class="k">def</span> <span class="nf">model</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GPModel</span><span class="p">:</span></div>
+        <span class="sd">&quot;&quot;&quot;The underlying GPflow model.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GPflowPredictor.predict"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.GPflowPredictor.predict">[docs]</a>    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">predict_f</span><span class="p">(</span><span class="n">query_points</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="GPflowPredictor.predict_joint"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.GPflowPredictor.predict_joint">[docs]</a>    <span class="k">def</span> <span class="nf">predict_joint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">predict_f</span><span class="p">(</span><span class="n">query_points</span><span class="p">,</span> <span class="n">full_cov</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="GPflowPredictor.sample"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.GPflowPredictor.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">predict_f_samples</span><span class="p">(</span><span class="n">query_points</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="GPflowPredictor.predict_y"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.GPflowPredictor.predict_y">[docs]</a>    <span class="k">def</span> <span class="nf">predict_y</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">predict_y</span><span class="p">(</span><span class="n">query_points</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="GPflowPredictor.optimize"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.GPflowPredictor.optimize">[docs]</a>    <span class="k">def</span> <span class="nf">optimize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Optimize the model with the specified `dataset`.</span>
+
+<span class="sd">        :param dataset: The data with which to optimize the `model`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span></div>
+
+    <span class="n">__deepcopy__</span> <span class="o">=</span> <span class="n">module_deepcopy</span></div>
+
+
+<div class="viewcode-block" id="GaussianProcessRegression"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.GaussianProcessRegression">[docs]</a><span class="k">class</span> <span class="nc">GaussianProcessRegression</span><span class="p">(</span><span class="n">GPflowPredictor</span><span class="p">,</span> <span class="n">TrainableProbabilisticModel</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.GPR`</span>
+<span class="sd">    or :class:`~gpflow.models.SGPR`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">GPR</span> <span class="o">|</span> <span class="n">SGPR</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param model: The GPflow model to wrap.</span>
+<span class="sd">        :param optimizer: The optimizer with which to train the model. Defaults to</span>
+<span class="sd">            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">optimizer</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">model</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;GaussianProcessRegression(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="si">!r}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="GaussianProcessRegression.model"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.GaussianProcessRegression.model">[docs]</a>    <span class="k">def</span> <span class="nf">model</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GPR</span> <span class="o">|</span> <span class="n">SGPR</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span></div>
+
+<div class="viewcode-block" id="GaussianProcessRegression.update"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.GaussianProcessRegression.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">data</span>
+
+        <span class="n">_assert_data_is_compatible</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span>
+
+        <span class="k">if</span> <span class="n">dataset</span><span class="o">.</span><span class="n">observations</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">y</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">observations</span></div>
+
+<div class="viewcode-block" id="GaussianProcessRegression.covariance_between_points"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.GaussianProcessRegression.covariance_between_points">[docs]</a>    <span class="k">def</span> <span class="nf">covariance_between_points</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">query_points_1</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">query_points_2</span><span class="p">:</span> <span class="n">TensorType</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the posterior covariance between sets of query points.</span>
+
+<span class="sd">        .. math:: \Sigma_{12} = K_{12} - K_{x1}(K_{xx} + \sigma^2 I)^{-1}K_{x2}</span>
+
+<span class="sd">        :param query_points_1: Set of query points with shape [N, D]</span>
+<span class="sd">        :param query_points_2: Sets of query points with shape [M, D]</span>
+
+<span class="sd">        :return: Covariance matrix between the sets of query points with shape [N, M]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([(</span><span class="n">query_points_1</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">]),</span> <span class="p">(</span><span class="n">query_points_2</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">])])</span>
+
+        <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">data</span>
+        <span class="n">num_data</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">fill</span><span class="p">([</span><span class="n">num_data</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">likelihood</span><span class="o">.</span><span class="n">variance</span><span class="p">))</span>
+
+        <span class="n">K</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">L</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">cholesky</span><span class="p">(</span><span class="n">K</span> <span class="o">+</span> <span class="n">s</span><span class="p">)</span>
+
+        <span class="n">Kx1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">query_points_1</span><span class="p">)</span>
+        <span class="n">Linv_Kx1</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">triangular_solve</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">Kx1</span><span class="p">)</span>
+
+        <span class="n">Kx2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">query_points_2</span><span class="p">)</span>
+        <span class="n">Linv_Kx2</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">triangular_solve</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">Kx2</span><span class="p">)</span>
+
+        <span class="n">K12</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">query_points_1</span><span class="p">,</span> <span class="n">query_points_2</span><span class="p">)</span>
+        <span class="n">cov</span> <span class="o">=</span> <span class="n">K12</span> <span class="o">-</span> <span class="n">tf</span><span class="o">.</span><span class="n">tensordot</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">Linv_Kx1</span><span class="p">),</span> <span class="n">Linv_Kx2</span><span class="p">,</span> <span class="p">[[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]])</span>
+
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">(</span>
+            <span class="p">[(</span><span class="n">query_points_1</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">]),</span> <span class="p">(</span><span class="n">query_points_2</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">]),</span> <span class="p">(</span><span class="n">cov</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;N&quot;</span><span class="p">,</span> <span class="s2">&quot;M&quot;</span><span class="p">])]</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">cov</span></div></div>
+
+
+<div class="viewcode-block" id="SparseVariational"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.SparseVariational">[docs]</a><span class="k">class</span> <span class="nc">SparseVariational</span><span class="p">(</span><span class="n">GPflowPredictor</span><span class="p">,</span> <span class="n">TrainableProbabilisticModel</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">SVGP</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param model: The underlying GPflow sparse variational model.</span>
+<span class="sd">        :param data: The initial training data.</span>
+<span class="sd">        :param optimizer: The optimizer with which to train the model. Defaults to</span>
+<span class="sd">            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">optimizer</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="o">=</span> <span class="n">data</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;SparseVariational(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="si">!r}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="si">!r}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="SparseVariational.model"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.SparseVariational.model">[docs]</a>    <span class="k">def</span> <span class="nf">model</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SVGP</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span></div>
+
+<div class="viewcode-block" id="SparseVariational.update"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.SparseVariational.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">_assert_data_is_compatible</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="o">=</span> <span class="n">dataset</span>
+
+        <span class="n">num_data</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">num_data</span> <span class="o">=</span> <span class="n">num_data</span></div></div>
+
+
+<div class="viewcode-block" id="VariationalGaussianProcess"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.VariationalGaussianProcess">[docs]</a><span class="k">class</span> <span class="nc">VariationalGaussianProcess</span><span class="p">(</span><span class="n">GPflowPredictor</span><span class="p">,</span> <span class="n">TrainableProbabilisticModel</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">VGP</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param model: The GPflow :class:`~gpflow.models.VGP`.</span>
+<span class="sd">        :param optimizer: The optimizer with which to train the model. Defaults to</span>
+<span class="sd">            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.</span>
+<span class="sd">        :raise ValueError (or InvalidArgumentError): If ``model``&#39;s :attr:`q_sqrt` is not rank 3.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_rank</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">q_sqrt</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">optimizer</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">model</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;VariationalGaussianProcess(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="si">!r}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="VariationalGaussianProcess.model"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.VariationalGaussianProcess.model">[docs]</a>    <span class="k">def</span> <span class="nf">model</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">VGP</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span></div>
+
+<div class="viewcode-block" id="VariationalGaussianProcess.update"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.VariationalGaussianProcess.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">jitter</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULTS</span><span class="o">.</span><span class="n">JITTER</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update the model given the specified ``dataset``. Does not train the model.</span>
+
+<span class="sd">        :param dataset: The data with which to update the model.</span>
+<span class="sd">        :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of</span>
+<span class="sd">            the covariance matrix.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+
+        <span class="n">_assert_data_is_compatible</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">(</span><span class="o">*</span><span class="n">model</span><span class="o">.</span><span class="n">data</span><span class="p">))</span>
+
+        <span class="n">f_mu</span><span class="p">,</span> <span class="n">f_cov</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">predict_f</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">full_cov</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># [N, L], [L, N, N]</span>
+
+        <span class="c1"># GPflow&#39;s VGP model is hard-coded to use the whitened representation, i.e.</span>
+        <span class="c1"># q_mu and q_sqrt parametrise q(v), and u = f(X) = L v, where L = cholesky(K(X, X))</span>
+        <span class="c1"># Hence we need to back-transform from f_mu and f_cov to obtain the updated</span>
+        <span class="c1"># new_q_mu and new_q_sqrt:</span>
+        <span class="n">Knn</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">full_cov</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># [N, N]</span>
+        <span class="n">jitter_mat</span> <span class="o">=</span> <span class="n">jitter</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">Knn</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">Lnn</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">cholesky</span><span class="p">(</span><span class="n">Knn</span> <span class="o">+</span> <span class="n">jitter_mat</span><span class="p">)</span>  <span class="c1"># [N, N]</span>
+        <span class="n">new_q_mu</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">triangular_solve</span><span class="p">(</span><span class="n">Lnn</span><span class="p">,</span> <span class="n">f_mu</span><span class="p">)</span>  <span class="c1"># [N, L]</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">triangular_solve</span><span class="p">(</span><span class="n">Lnn</span><span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">f_cov</span><span class="p">)</span>  <span class="c1"># [L, N, N], L⁻¹ f_cov</span>
+        <span class="n">S_v</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">triangular_solve</span><span class="p">(</span><span class="n">Lnn</span><span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">matrix_transpose</span><span class="p">(</span><span class="n">tmp</span><span class="p">))</span>  <span class="c1"># [L, N, N]</span>
+        <span class="n">new_q_sqrt</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">cholesky</span><span class="p">(</span><span class="n">S_v</span> <span class="o">+</span> <span class="n">jitter_mat</span><span class="p">)</span>  <span class="c1"># [L, N, N]</span>
+
+        <span class="n">model</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">astuple</span><span class="p">()</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">num_data</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">q_mu</span> <span class="o">=</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">new_q_mu</span><span class="p">)</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">q_sqrt</span> <span class="o">=</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">new_q_sqrt</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">gpflow</span><span class="o">.</span><span class="n">utilities</span><span class="o">.</span><span class="n">triangular</span><span class="p">())</span></div></div>
+
+
+<div class="viewcode-block" id="supported_models"><a class="viewcode-back" href="../../../autoapi/trieste/models/model_interfaces/index.html#trieste.models.supported_models">[docs]</a><span class="n">supported_models</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Optimizer</span><span class="p">],</span> <span class="n">TrainableProbabilisticModel</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">GPR</span><span class="p">:</span> <span class="n">GaussianProcessRegression</span><span class="p">,</span>
+    <span class="n">SGPR</span><span class="p">:</span> <span class="n">GaussianProcessRegression</span><span class="p">,</span>
+    <span class="n">VGP</span><span class="p">:</span> <span class="n">VariationalGaussianProcess</span><span class="p">,</span></div>
+<span class="p">}</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">A mapping of third-party model types to :class:`CustomTrainable` classes that wrap models of those</span>
+<span class="sd">types.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="k">def</span> <span class="nf">_assert_data_is_compatible</span><span class="p">(</span><span class="n">new_data</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">existing_data</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">new_data</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">existing_data</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Shape </span><span class="si">{</span><span class="n">new_data</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> of new query points is incompatible with&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot; shape </span><span class="si">{</span><span class="n">existing_data</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> of existing query points. Trailing&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot; dimensions must match.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">new_data</span><span class="o">.</span><span class="n">observations</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">existing_data</span><span class="o">.</span><span class="n">observations</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Shape </span><span class="si">{</span><span class="n">new_data</span><span class="o">.</span><span class="n">observations</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> of new observations is incompatible with&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot; shape </span><span class="si">{</span><span class="n">existing_data</span><span class="o">.</span><span class="n">observations</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> of existing observations. Trailing&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot; dimensions must match.&quot;</span>
+        <span class="p">)</span>
+</pre></div>
+
+              </div>
+              
+              
+          </main>
+          
+
+      </div>
+    </div>
+  
+  <script src="../../../_static/js/index.1c5a1a01449ed65a7b51.js"></script>
+
+  <footer class="footer mt-5 mt-md-0">
+  <div class="container">
+    
+    <div class="footer-item">
+      <p class="copyright">
+    &copy; Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.<br/>
+</p>
+    </div>
+    
+    <div class="footer-item">
+      <p class="sphinx-version">
+Created using <a href="http://sphinx-doc.org/">Sphinx</a> 4.0.2.<br/>
+</p>
+    </div>
+    
+  </div>
+</footer>
+  </body>
+</html>

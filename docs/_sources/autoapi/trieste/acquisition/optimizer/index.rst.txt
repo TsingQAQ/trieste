@@ -1,0 +1,75 @@
+:mod:`trieste.acquisition.optimizer`
+====================================
+
+.. py:module:: trieste.acquisition.optimizer
+
+.. autoapi-nested-parse::
+
+   This module contains functionality for optimizing
+   :data:`~trieste.acquisition.AcquisitionFunction`\ s over :class:`~trieste.space.SearchSpace`\ s.
+
+
+
+Module Contents
+---------------
+
+.. data:: SP
+   
+
+   Type variable bound to :class:`~trieste.space.SearchSpace`. 
+
+
+.. data:: AcquisitionOptimizer
+   
+
+   Type alias for a function that returns the single point that maximizes an acquisition function over
+   a search space. For a search space with points of shape [D], and acquisition function with input
+   shape [..., B, D] output shape [..., 1], the :const:`AcquisitionOptimizer` return shape should be
+   [B, D].
+
+
+.. function:: automatic_optimizer_selector(space: trieste.space.SearchSpace, target_func: trieste.acquisition.function.AcquisitionFunction) -> trieste.type.TensorType
+
+   A wrapper around our :const:`AcquisitionOptimizer`s. This class performs
+   an :const:`AcquisitionOptimizer` appropriate for the
+   problem's :class:`~trieste.space.SearchSpace`.
+
+   :param space: The space of points over which to search, for points with shape [D].
+   :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
+           [..., 1].
+   :return: The batch of points in ``space`` that maximises ``target_func``, with shape [1, D].
+
+
+.. function:: optimize_discrete(space: trieste.space.DiscreteSearchSpace, target_func: trieste.acquisition.function.AcquisitionFunction) -> trieste.type.TensorType
+
+   An :const:`AcquisitionOptimizer` for :class:'DiscreteSearchSpace' spaces and
+   batches of size of 1.
+
+   :param space: The space of points over which to search, for points with shape [D].
+   :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
+           [..., 1].
+   :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
+
+
+.. function:: optimize_continuous(space: trieste.space.Box, target_func: trieste.acquisition.function.AcquisitionFunction) -> trieste.type.TensorType
+
+   An gradient-based :const:`AcquisitionOptimizer` for :class:'Box' spaces and batches
+   of size of 1.
+
+   :param space: The space of points over which to search, for points with shape [D].
+   :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
+           [..., 1].
+   :return: The **one** point in ``space`` that maximises ``target_func``, with shape [1, D].
+
+
+.. function:: batchify(batch_size_one_optimizer: AcquisitionOptimizer[SP], batch_size: int) -> AcquisitionOptimizer[SP]
+
+   A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
+   :const:`AcquisitionOptimizer` to allow it to optimize batch acquisition functions.
+
+   :param batch_size_one_optimizer: An optimizer that returns only batch size one, i.e. produces a
+           single point with shape [1, D].
+   :param batch_size: The number of points in the batch.
+   :return: An :const:`AcquisitionOptimizer` that will provide a batch of points with shape [B, D].
+
+

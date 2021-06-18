@@ -1,0 +1,722 @@
+:mod:`trieste.acquisition`
+==========================
+
+.. py:module:: trieste.acquisition
+
+.. autoapi-nested-parse::
+
+   The acquisition process aims to find the optimal point(s) at which to next evaluate the objective
+   function, with the aim of minimising it. The functionality in this package implements that process.
+   It typically uses the current observations of the objective function, or a posterior over those
+   observations.
+
+   In this library, the acquisition rule is the central object of the API, while acquisition functions
+   are supplementary. This is because some acquisition rules, such as Thompson sampling,
+   do not require an acquisition function. This contrasts with other libraries which may consider
+   the acquisition function as the central component of this process and assume Efficient Global
+   Optimization (EGO) for the acquisition rule.
+
+   This package contains acquisition rules, as implementations of
+   :class:`~trieste.acquisition.rule.AcquisitionRule`, and acquisition functions. It also contains
+   :class:`AcquisitionFunctionBuilder`\ s which provide a common interface for the rules to build
+   acquisition functions.
+
+   Acquisition rules in this library that use acquisition functions, such as
+   :class:`EfficientGlobalOptimization`, *maximize* these functions. This defines the sign the
+   acquisition function should take. Additionally, acquisition functions and builders in this library
+   are designed to minimize the objective function. For example, we do not provide an implementation of
+   UCB.
+
+
+
+Submodules
+----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   function/index.rst
+   optimizer/index.rst
+   rule/index.rst
+   sampler/index.rst
+
+
+Package Contents
+----------------
+
+.. class:: Product(*builders: trieste.acquisition.function.AcquisitionFunctionBuilder)
+
+
+   Bases: :py:obj:`Reducer`
+
+   :class:`Reducer` whose resulting acquisition function returns the element-wise product of the
+   outputs of constituent acquisition functions.
+
+   :param \*builders: Acquisition function builders. At least one must be provided.
+   :raise `~tf.errors.InvalidArgumentError`: If no builders are specified.
+
+   .. method:: _reduce(self, inputs: collections.abc.Sequence[trieste.type.TensorType]) -> trieste.type.TensorType
+
+      :param inputs: The outputs of each acquisition function.
+      :return: The element-wise product of the ``inputs``.
+
+
+
+.. class:: Reducer(*builders: trieste.acquisition.function.AcquisitionFunctionBuilder)
+
+
+   Bases: :py:obj:`trieste.acquisition.function.AcquisitionFunctionBuilder`
+
+   A :class:`Reducer` builds an :const:`~trieste.acquisition.AcquisitionFunction` whose output is
+   calculated from the outputs of a number of other
+   :const:`~trieste.acquisition.AcquisitionFunction`\ s. How these outputs are composed is defined
+   by the method :meth:`_reduce`.
+
+   :param \*builders: Acquisition function builders. At least one must be provided.
+   :raise `~tf.errors.InvalidArgumentError`: If no builders are specified.
+
+   .. method:: prepare_acquisition_function(self, datasets: collections.abc.Mapping[str, trieste.data.Dataset], models: collections.abc.Mapping[str, trieste.models.ProbabilisticModel]) -> trieste.acquisition.function.AcquisitionFunction
+
+      Return an acquisition function. This acquisition function is defined by first building
+      acquisition functions from each of the
+      :class:`~trieste.acquisition.AcquisitionFunctionBuilder`\ s specified at
+      :meth:`__init__`, then reducing, with :meth:`_reduce`, the output of each of those
+      acquisition functions.
+
+      :param datasets: The data from the observer.
+      :param models: The models over each dataset in ``datasets``.
+      :return: The reduced acquisition function.
+
+
+   .. method:: acquisitions(self) -> collections.abc.Sequence[trieste.acquisition.function.AcquisitionFunctionBuilder]
+      :property:
+
+      The acquisition function builders specified at class initialisation.
+
+
+   .. method:: _reduce(self, inputs: collections.abc.Sequence[trieste.type.TensorType]) -> trieste.type.TensorType
+      :abstractmethod:
+
+      :param inputs: The output of each constituent acquisition function.
+      :return: The output of the reduced acquisition function.
+
+
+
+.. class:: Sum(*builders: trieste.acquisition.function.AcquisitionFunctionBuilder)
+
+
+   Bases: :py:obj:`Reducer`
+
+   :class:`Reducer` whose resulting acquisition function returns the element-wise sum of the
+   outputs of constituent acquisition functions.
+
+   :param \*builders: Acquisition function builders. At least one must be provided.
+   :raise `~tf.errors.InvalidArgumentError`: If no builders are specified.
+
+   .. method:: _reduce(self, inputs: collections.abc.Sequence[trieste.type.TensorType]) -> trieste.type.TensorType
+
+      :param inputs: The outputs of each acquisition function.
+      :return: The element-wise sum of the ``inputs``.
+
+
+
+.. data:: AcquisitionFunction
+   
+
+   Type alias for acquisition functions.
+
+   An :const:`AcquisitionFunction` maps a set of `B` query points (each of dimension `D`) to a single
+   value that describes how useful it would be evaluate all these points together (to our goal of
+   optimizing the objective function). Thus, with leading dimensions, an :const:`AcquisitionFunction`
+   takes input shape `[..., B, D]` and returns shape `[..., 1]`.
+
+   Note that :const:`AcquisitionFunction`s which do not support batch optimization still expect inputs
+   with a batch dimension, i.e. an input of shape `[..., 1, D]`.
+
+
+.. class:: AcquisitionFunctionBuilder
+
+   Bases: :py:obj:`abc.ABC`
+
+   An :class:`AcquisitionFunctionBuilder` builds an acquisition function.
+
+   .. method:: prepare_acquisition_function(self, datasets: collections.abc.Mapping[str, trieste.data.Dataset], models: collections.abc.Mapping[str, trieste.models.ProbabilisticModel]) -> AcquisitionFunction
+      :abstractmethod:
+
+      :param datasets: The data from the observer.
+      :param models: The models over each dataset in ``datasets``.
+      :return: An acquisition function.
+
+
+
+.. class:: BatchMonteCarloExpectedImprovement(sample_size: int, *, jitter: float = DEFAULTS.JITTER)
+
+
+   Bases: :py:obj:`SingleModelAcquisitionBuilder`
+
+   Expected improvement for batches of points (or :math:`q`-EI), approximated using Monte Carlo
+   estimation with the reparametrization trick. See :cite:`Ginsbourger2010` for details.
+
+   Improvement is measured with respect to the minimum predictive mean at observed query points.
+   This is calculated in :class:`BatchMonteCarloExpectedImprovement` by assuming observations
+   at new points are independent from those at known query points. This is faster, but is an
+   approximation for noisy observers.
+
+   :param sample_size: The number of samples for each batch of points.
+   :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+       the covariance matrix.
+   :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive, or
+       ``jitter`` is negative.
+
+   .. method:: prepare_acquisition_function(self, dataset: trieste.data.Dataset, model: trieste.models.ProbabilisticModel) -> AcquisitionFunction
+
+      :param dataset: The data from the observer. Must be populated.
+      :param model: The model over the specified ``dataset``. Must have event shape [1].
+      :return: The batch *expected improvement* acquisition function.
+      :raise ValueError (or InvalidArgumentError): If ``dataset`` is not populated, or ``model``
+          does not have an event shape of [1].
+
+
+
+.. class:: ExpectedConstrainedImprovement(objective_tag: str, constraint_builder: AcquisitionFunctionBuilder, min_feasibility_probability: float | TensorType = 0.5)
+
+
+   Bases: :py:obj:`AcquisitionFunctionBuilder`
+
+   Builder for the *expected constrained improvement* acquisition function defined in
+   :cite:`gardner14`. The acquisition function computes the expected improvement from the best
+   feasible point, where feasible points are those that (probably) satisfy some constraint. Where
+   there are no feasible points, this builder simply builds the constraint function.
+
+   :param objective_tag: The tag for the objective data and model.
+   :param constraint_builder: The builder for the constraint function.
+   :param min_feasibility_probability: The minimum probability of feasibility for a
+       "best point" to be considered feasible.
+   :raise ValueError (or InvalidArgumentError): If ``min_feasibility_probability`` is not a
+       scalar in the unit interval :math:`[0, 1]`.
+
+   .. method:: prepare_acquisition_function(self, datasets: collections.abc.Mapping[str, trieste.data.Dataset], models: collections.abc.Mapping[str, trieste.models.ProbabilisticModel]) -> AcquisitionFunction
+
+      :param datasets: The data from the observer.
+      :param models: The models over each dataset in ``datasets``.
+      :return: The expected constrained improvement acquisition function. This function will raise
+          :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+          greater than one.
+      :raise KeyError: If `objective_tag` is not found in ``datasets`` and ``models``.
+      :raise ValueError: If the objective data is empty.
+
+
+
+.. class:: ExpectedHypervolumeImprovement
+
+   Bases: :py:obj:`SingleModelAcquisitionBuilder`
+
+   Builder for the expected hypervolume improvement acquisition function.
+   The implementation of the acquisition function largely
+   follows :cite:`yang2019efficient`
+
+   .. method:: prepare_acquisition_function(self, dataset: trieste.data.Dataset, model: trieste.models.ProbabilisticModel) -> AcquisitionFunction
+
+      :param dataset: The data from the observer. Must be populated.
+      :param model: The model over the specified ``dataset``.
+      :return: The expected hypervolume improvement acquisition function.
+
+
+
+.. class:: ExpectedImprovement
+
+   Bases: :py:obj:`SingleModelAcquisitionBuilder`
+
+   Builder for the expected improvement function where the "best" value is taken to be the minimum
+   of the posterior mean at observed points.
+
+   .. method:: prepare_acquisition_function(self, dataset: trieste.data.Dataset, model: trieste.models.ProbabilisticModel) -> AcquisitionFunction
+
+      :param dataset: The data from the observer. Must be populated.
+      :param model: The model over the specified ``dataset``.
+      :return: The expected improvement function. This function will raise
+          :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+          greater than one.
+      :raise ValueError: If ``dataset`` is empty.
+
+
+
+.. class:: GreedyAcquisitionFunctionBuilder
+
+   Bases: :py:obj:`abc.ABC`
+
+   A :class:`GreedyAcquisitionFunctionBuilder` builds an acquisition function
+   suitable for greedily building batches for batch Bayesian
+   Optimization. :class:`GreedyAcquisitionFunctionBuilder` differs
+   from :class:`AcquisitionFunctionBuilder` by requiring that a set
+   of pending points is passed to the builder. Note that this acquisition function
+   is typically called `B` times each Bayesian optimization step, when building batches
+   of size `B`.
+
+   .. method:: prepare_acquisition_function(self, datasets: collections.abc.Mapping[str, trieste.data.Dataset], models: collections.abc.Mapping[str, trieste.models.ProbabilisticModel], pending_points: Optional[trieste.type.TensorType] = None) -> AcquisitionFunction
+      :abstractmethod:
+
+      :param datasets: The data from the observer.
+      :param models: The models over each dataset in ``datasets``.
+      :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
+          where M is the number of pending points and D is the search space dimension.
+      :return: An acquisition function.
+
+
+
+.. class:: LocalPenalizationAcquisitionFunction(search_space: trieste.space.SearchSpace, num_samples: int = 500, penalizer: Callable[..., PenalizationFunction] = None, base_acquisition_function_builder: Optional[Union[ExpectedImprovement, MinValueEntropySearch]] = None)
+
+
+   Bases: :py:obj:`SingleModelGreedyAcquisitionBuilder`
+
+   Builder of the acquisition function maker for greedily collecting batches by local
+   penalization.  The resulting :const:`AcquisitionFunctionMaker` takes in a set of pending
+   points and returns a base acquisition function penalized around those points.
+   An estimate of the objective function's Lipschitz constant is used to control the size
+   of penalization.
+
+   Local penalization allows us to perform batch Bayesian optimization with a standard (non-batch)
+   acqusition function. All that we require is that the acquisition function takes strictly
+   positive values. By iteratively building a batch of points though sequentially maximizing
+   this acquisition function but down-weighted around locations close to the already
+   chosen (pending) points, local penalization provides diverse batches of candidate points.
+
+   Local penalization is applied to the acquisition function multiplicatively. However, to
+   improve numerical stability, we perfom additive penalization in a log space.
+
+   The Lipschitz constant and additional penalization parameters are estimated once
+   when first preparing the acquisition function with no pending points. These estimates
+   are reused for all subsequent function calls.
+
+   :param search_space: The global search space over which the optimisation is defined.
+   :param num_samples: Size of the random sample over which the Lipschitz constant
+       is estimated. We recommend scaling this with search space dimension.
+   :param penalizer: The chosen penalization method (defaults to soft penalization).
+   :param base_acquisition_function_builder: Base acquisition function to be
+       penalized (defaults to expected improvement). Local penalization only supports
+       strictly positive acquisition functions.
+
+   .. method:: prepare_acquisition_function(self, dataset: trieste.data.Dataset, model: trieste.models.ProbabilisticModel, pending_points: Optional[trieste.type.TensorType] = None) -> AcquisitionFunction
+
+      :param dataset: The data from the observer.
+      :param model: The model over the specified ``dataset``.
+      :param pending_points: The points we penalize with respect to.
+      :return: The (log) expected improvement penalized with respect to the pending points.
+      :raise ValueError: if the first call does not have pending_points=None.
+
+
+
+.. class:: MinValueEntropySearch(search_space: trieste.space.SearchSpace, num_samples: int = 10, grid_size: int = 5000)
+
+
+   Bases: :py:obj:`SingleModelAcquisitionBuilder`
+
+   Builder for the max-value entropy search acquisition function modified for objective
+   minimisation. :class:`MinValueEntropySearch` estimates the information in the distribution
+   of the objective minimum that would be gained by evaluating the objective at a given point.
+
+   This implementation largely follows :cite:`wang2017max` and samples the objective minimum
+   :math:`y^*` via a Gumbel sampler.
+
+   :param search_space: The global search space over which the optimisation is defined.
+   :param num_samples: Number of samples to draw from the distribution over the minimum of the
+       objective function.
+   :param grid_size: Size of the grid with which to fit the Gumbel distribution. We recommend
+       scaling this with search space dimension.
+
+   .. method:: prepare_acquisition_function(self, dataset: trieste.data.Dataset, model: trieste.models.ProbabilisticModel) -> AcquisitionFunction
+
+      :param dataset: The data from the observer.
+      :param model: The model over the specified ``dataset``.
+      :return: The max-value entropy search acquisition function modified for objective
+          minimisation. This function will raise :exc:`ValueError` or
+          :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+
+
+
+.. class:: NegativeLowerConfidenceBound(beta: float = 1.96)
+
+
+   Bases: :py:obj:`SingleModelAcquisitionBuilder`
+
+   Builder for the negative of the lower confidence bound. The lower confidence bound is typically
+   minimised, so the negative is suitable for maximisation.
+
+   :param beta: Weighting given to the variance contribution to the lower confidence bound.
+       Must not be negative.
+
+   .. method:: prepare_acquisition_function(self, dataset: trieste.data.Dataset, model: trieste.models.ProbabilisticModel) -> AcquisitionFunction
+
+      :param dataset: Unused.
+      :param model: The model over the specified ``dataset``.
+      :return: The negative lower confidence bound function. This function will raise
+          :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+          greater than one.
+      :raise ValueError: If ``beta`` is negative.
+
+
+
+.. class:: NegativePredictiveMean
+
+
+   Bases: :py:obj:`NegativeLowerConfidenceBound`
+
+   Builder for the negative of the predictive mean. The predictive mean is minimised on minimising
+   the objective function. The negative predictive mean is therefore maximised.
+
+   :param beta: Weighting given to the variance contribution to the lower confidence bound.
+       Must not be negative.
+
+
+.. class:: ProbabilityOfFeasibility(threshold: float | TensorType)
+
+
+   Bases: :py:obj:`SingleModelAcquisitionBuilder`
+
+   Builder for the :func:`probability_of_feasibility` acquisition function, defined in
+   :cite:`gardner14` as
+
+   .. math::
+
+       \int_{-\infty}^{\tau} p(c(\mathbf{x}) | \mathbf{x}, \mathcal{D}) \mathrm{d} c(\mathbf{x})
+       \qquad ,
+
+   where :math:`\tau` is a threshold. Values below the threshold are considered feasible by the
+   constraint function. See also :cite:`schonlau1998global` for details.
+
+   :param threshold: The (scalar) probability of feasibility threshold.
+   :raise ValueError (or InvalidArgumentError): If ``threshold`` is not a scalar.
+
+   .. method:: threshold(self) -> float | TensorType
+      :property:
+
+      The probability of feasibility threshold.
+
+
+   .. method:: prepare_acquisition_function(self, dataset: trieste.data.Dataset, model: trieste.models.ProbabilisticModel) -> AcquisitionFunction
+
+      :param dataset: Unused.
+      :param model: The model over the specified ``dataset``.
+      :return: The probability of feasibility function. This function will raise
+          :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+          greater than one.
+
+
+
+.. class:: SingleModelAcquisitionBuilder
+
+   Bases: :py:obj:`abc.ABC`
+
+   Convenience acquisition function builder for an acquisition function (or component of a
+   composite acquisition function) that requires only one model, dataset pair.
+
+   .. method:: using(self, tag: str) -> AcquisitionFunctionBuilder
+
+      :param tag: The tag for the model, dataset pair to use to build this acquisition function.
+      :return: An acquisition function builder that selects the model and dataset specified by
+          ``tag``, as defined in :meth:`prepare_acquisition_function`.
+
+
+   .. method:: prepare_acquisition_function(self, dataset: trieste.data.Dataset, model: trieste.models.ProbabilisticModel) -> AcquisitionFunction
+      :abstractmethod:
+
+      :param dataset: The data to use to build the acquisition function.
+      :param model: The model over the specified ``dataset``.
+      :return: An acquisition function.
+
+
+
+.. class:: SingleModelGreedyAcquisitionBuilder
+
+   Bases: :py:obj:`abc.ABC`
+
+   Convenience acquisition function builder for a greedy acquisition function (or component of a
+   composite greedy acquisition function) that requires only one model, dataset pair.
+
+   .. method:: using(self, tag: str) -> GreedyAcquisitionFunctionBuilder
+
+      :param tag: The tag for the model, dataset pair to use to build this acquisition function.
+      :return: An acquisition function builder that selects the model and dataset specified by
+          ``tag``, as defined in :meth:`prepare_acquisition_function`.
+
+
+   .. method:: prepare_acquisition_function(self, dataset: trieste.data.Dataset, model: trieste.models.ProbabilisticModel, pending_points: Optional[trieste.type.TensorType] = None) -> AcquisitionFunction
+      :abstractmethod:
+
+      :param dataset: The data to use to build the acquisition function.
+      :param model: The model over the specified ``dataset``.
+      :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
+          where M is the number of pending points and D is the search space dimension.
+      :return: An acquisition function.
+
+
+
+.. function:: expected_hv_improvement(model: trieste.models.ProbabilisticModel, pareto: trieste.utils.pareto.Pareto, reference_point: trieste.type.TensorType) -> AcquisitionFunction
+
+   expected Hyper-volume (HV) calculating using Eq. 44 of :cite:`yang2019efficient` paper.
+   The expected hypervolume improvement calculation in the non-dominated region
+   can be decomposed into sub-calculations based on each partitioned cell.
+   For easier calculation, this sub-calculation can be reformulated as a combination
+   of two generalized expected improvements, corresponding to Psi (Eq. 44) and Nu (Eq. 45)
+   function calculations, respectively.
+
+   Note:
+   1. Since in Trieste we do not assume the use of a certain non-dominated region partition
+   algorithm, we do not assume the last dimension of the partitioned cell has only one
+   (lower) bound (i.e., minus infinity, which is used in the :cite:`yang2019efficient` paper).
+   This is not as efficient as the original paper, but is applicable to different non-dominated
+   partition algorithm.
+   2. As the Psi and nu function in the original paper are defined for maximization problems,
+   we inverse our minimisation problem (to also be a maximisation), allowing use of the
+   original notation and equations.
+
+   :param model: The model of the objective function.
+   :param pareto: Pareto class
+   :param reference_point: The reference point for calculating hypervolume
+   :return: The expected_hv_improvement acquisition function modified for objective
+       minimisation. This function will raise :exc:`ValueError` or
+       :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+
+
+.. function:: expected_improvement(model: trieste.models.ProbabilisticModel, eta: trieste.type.TensorType) -> AcquisitionFunction
+
+   Return the Expected Improvement (EI) acquisition function for single-objective global
+   optimization. Improvement is with respect to the current "best" observation ``eta``, where an
+   improvement moves towards the objective function's minimum, and the expectation is calculated
+   with respect to the ``model`` posterior. For model posterior :math:`f`, this is
+
+   .. math:: x \mapsto \mathbb E \left[ \max (\eta - f(x), 0) \right]
+
+   This function was introduced by Mockus et al, 1975. See :cite:`Jones:1998` for details.
+
+   :param model: The model of the objective function.
+   :param eta: The "best" observation.
+   :return: The expected improvement function. This function will raise
+       :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+       greater than one.
+
+
+.. function:: hard_local_penalizer(model: trieste.models.ProbabilisticModel, pending_points: trieste.type.TensorType, lipschitz_constant: trieste.type.TensorType, eta: trieste.type.TensorType) -> PenalizationFunction
+
+   Return the hard local penalization function used for single-objective greedy batch Bayesian
+   optimization in :cite:`Alvi:2019`.
+
+   Hard penalization is a stronger penalizer than soft penalization and is sometimes more effective
+   See :cite:`Alvi:2019` for details. Our implementation follows theirs, with the penalization from
+   a set of pending points being the product of the individual penalizations.
+
+   :param model: The model over the specified ``dataset``.
+   :param pending_points: The points we penalize with respect to.
+   :param lipschitz_constant: The estimated Lipschitz constant of the objective function.
+   :param eta: The estimated global minima.
+   :return: The local penalization function. This function will raise
+       :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+       greater than one.
+
+
+.. function:: lower_confidence_bound(model: trieste.models.ProbabilisticModel, beta: float) -> AcquisitionFunction
+
+   The lower confidence bound (LCB) acquisition function for single-objective global optimization.
+
+   .. math:: x^* \mapsto \mathbb{E} [f(x^*)|x, y] - \beta \sqrt{ \mathrm{Var}[f(x^*)|x, y] }
+
+   See :cite:`Srinivas:2010` for details.
+
+   :param model: The model of the objective function.
+   :param beta: The weight to give to the standard deviation contribution of the LCB. Must not be
+       negative.
+   :return: The lower confidence bound function. This function will raise
+       :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+       greater than one.
+   :raise ValueError: If ``beta`` is negative.
+
+
+.. function:: min_value_entropy_search(model: trieste.models.ProbabilisticModel, samples: trieste.type.TensorType) -> AcquisitionFunction
+
+   Return the max-value entropy search acquisition function (adapted from :cite:`wang2017max`),
+   modified for objective minimisation. This function calculates the information gain (or change in
+   entropy) in the distribution over the objective minimum :math:`y^*`, if we were to evaluate the
+   objective at a given point.
+
+   :param model: The model of the objective function.
+   :param samples: Samples from the distribution over :math:`y^*`.
+   :return: The max-value entropy search acquisition function modified for objective
+       minimisation. This function will raise :exc:`ValueError` or
+       :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+
+
+.. function:: probability_of_feasibility(model: trieste.models.ProbabilisticModel, threshold: float | TensorType) -> AcquisitionFunction
+
+   The probability of feasibility acquisition function defined in :cite:`gardner14` as
+
+   .. math::
+
+       \int_{-\infty}^{\tau} p(c(\mathbf{x}) | \mathbf{x}, \mathcal{D}) \mathrm{d} c(\mathbf{x})
+       \qquad ,
+
+   where :math:`\tau` is a threshold. Values below the threshold are considered feasible by the
+   constraint function.
+
+   :param model: The model of the objective function.
+   :param threshold: The (scalar) probability of feasibility threshold.
+   :return: The probability of feasibility function. This function will raise
+       :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+       greater than one.
+   :raise ValueError: If ``threshold`` is not a scalar.
+
+
+.. function:: soft_local_penalizer(model: trieste.models.ProbabilisticModel, pending_points: trieste.type.TensorType, lipschitz_constant: trieste.type.TensorType, eta: trieste.type.TensorType) -> PenalizationFunction
+
+   Return the soft local penalization function used for single-objective greedy batch Bayesian
+   optimization in :cite:`Gonzalez:2016`.
+
+   Soft penalization returns the probability that a candidate point does not belong
+   in the exclusion zones of the pending points. For model posterior mean :math:`\mu`, model
+   posterior variance :math:`\sigma^2`, current "best" function value :math:`\eta`, and an
+   estimated Lipschitz constant :math:`L`,the penalization from a set of pending point :math:`x'`
+   on a candidate point :math:`x` is given by
+   .. math:: \phi(x, x') = \frac{1}{2}\textrm{erfc}(-z)
+   where :math:`z = \frac{1}{\sqrt{2\sigma^2(x')}}(L||x'-x|| + \eta - \mu(x'))`.
+
+   The penalization from a set of pending points is just product of the individual penalizations.
+   See :cite:`Gonzalez:2016` for a full derivation.
+
+   :param model: The model over the specified ``dataset``.
+   :param pending_points: The points we penalize with respect to.
+   :param lipschitz_constant: The estimated Lipschitz constant of the objective function.
+   :param eta: The estimated global minima.
+   :return: The local penalization function. This function will raise
+       :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+       greater than one.
+
+
+.. class:: BatchReparametrizationSampler(sample_size: int, model: trieste.models.ProbabilisticModel)
+
+
+   Bases: :py:obj:`Sampler`
+
+   This sampler employs the *reparameterization trick* to approximate batches of samples from a
+   :class:`ProbabilisticModel`\ 's predictive joint distribution as
+
+   .. math:: x \mapsto \mu(x) + \epsilon L(x)
+
+   where :math:`L` is the Cholesky factor s.t. :math:`LL^T` is the covariance, and
+   :math:`\epsilon \sim \mathcal N (0, 1)` is constant for a given sampler, thus ensuring samples
+   form a continuous curve.
+
+   :param sample_size: The number of samples for each batch of points. Must be positive.
+   :param model: The model to sample from.
+   :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+
+   .. method:: sample(self, at: trieste.type.TensorType, *, jitter: float = DEFAULTS.JITTER) -> trieste.type.TensorType
+
+      Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
+      :meth:`sample`, for any given :class:`BatchReparametrizationSampler` and ``at``, will
+      produce the exact same samples. Calls to :meth:`sample` on *different*
+      :class:`BatchReparametrizationSampler` instances will produce different samples.
+
+      :param at: Batches of query points at which to sample the predictive distribution, with
+          shape `[..., B, D]`, for batches of size `B` of points of dimension `D`. Must have a
+          consistent batch size across all calls to :meth:`sample` for any given
+          :class:`BatchReparametrizationSampler`.
+      :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+          the covariance matrix.
+      :return: The samples, of shape `[..., S, B, L]`, where `S` is the `sample_size`, `B` the
+          number of points per batch, and `L` the dimension of the model's predictive
+          distribution.
+      :raise ValueError (or InvalidArgumentError): If any of the following are true:
+
+          - ``at`` is a scalar.
+          - The batch size `B` of ``at`` is not positive.
+          - The batch size `B` of ``at`` differs from that of previous calls.
+          - ``jitter`` is negative.
+
+
+
+.. class:: DiscreteThompsonSampler(sample_size: int, model: trieste.models.ProbabilisticModel)
+
+
+   Bases: :py:obj:`Sampler`
+
+   This sampler provides approximate Thompson samples of the objective function's
+   maximiser :math:`x^*` over a discrete set of input locations.
+
+   :param sample_size: The desired number of samples.
+   :param model: The model to sample from.
+   :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+
+   .. method:: sample(self, at: trieste.type.TensorType) -> trieste.type.TensorType
+
+      Return approximate samples from of the objective function's minimser. We return only
+      unique samples.
+
+      :param at: Where to sample the predictive distribution, with shape `[N, D]`, for points
+          of dimension `D`.
+      :return: The samples, of shape `[S, D]`, where `S` is the `sample_size`.
+      :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape.
+
+
+
+.. class:: GumbelSampler(sample_size: int, model: trieste.models.ProbabilisticModel)
+
+
+   Bases: :py:obj:`Sampler`
+
+   This sampler follows :cite:`wang2017max` and yields approximate samples of the objective
+   minimum value :math:`y^*` via the empirical cdf :math:`\operatorname{Pr}(y^*<y)`. The cdf
+   is approximated by a Gumbel distribution
+
+   .. math:: \mathcal G(y; a, b) = 1 - e^{-e^\frac{y - a}{b}}
+
+   where :math:`a, b \in \mathbb R` are chosen such that the quartiles of the Gumbel and cdf match.
+   Samples are obtained via the Gumbel distribution by sampling :math:`r` uniformly from
+   :math:`[0, 1]` and applying the inverse probability integral transform
+   :math:`y = \mathcal G^{-1}(r; a, b)`.
+
+   :param sample_size: The desired number of samples.
+   :param model: The model to sample from.
+   :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+
+   .. method:: sample(self, at: trieste.type.TensorType) -> trieste.type.TensorType
+
+      Return approximate samples from of the objective function's minimum value.
+
+      :param at: Points at where to fit the Gumbel distribution, with shape `[N, D]`, for points
+          of dimension `D`. We recommend scaling `N` with search space dimension.
+      :return: The samples, of shape `[S, 1]`, where `S` is the `sample_size`.
+      :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape.
+
+
+
+.. class:: IndependentReparametrizationSampler(sample_size: int, model: trieste.models.ProbabilisticModel)
+
+
+   Bases: :py:obj:`Sampler`
+
+   This sampler employs the *reparameterization trick* to approximate samples from a
+   :class:`ProbabilisticModel`\ 's predictive distribution as
+
+   .. math:: x \mapsto \mu(x) + \epsilon \sigma(x)
+
+   where :math:`\epsilon \sim \mathcal N (0, 1)` is constant for a given sampler, thus ensuring
+   samples form a continuous curve.
+
+   :param sample_size: The number of samples to take at each point. Must be positive.
+   :param model: The model to sample from.
+   :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+
+   .. method:: sample(self, at: trieste.type.TensorType) -> trieste.type.TensorType
+
+      Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
+      :meth:`sample`, for any given :class:`IndependentReparametrizationSampler` and ``at``, will
+      produce the exact same samples. Calls to :meth:`sample` on *different*
+      :class:`IndependentReparametrizationSampler` instances will produce different samples.
+
+      :param at: Where to sample the predictive distribution, with shape `[..., 1, D]`, for points
+          of dimension `D`.
+      :return: The samples, of shape `[..., S, 1, L]`, where `S` is the `sample_size` and `L` is
+          the number of latent model dimensions.
+      :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape.
+
+
+

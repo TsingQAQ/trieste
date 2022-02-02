@@ -22,7 +22,7 @@ import copy
 import traceback
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Dict, Generic, TypeVar, cast, overload
+from typing import Dict, Generic, TypeVar, cast, overload, Callable
 
 import numpy as np
 import tensorflow as tf
@@ -346,6 +346,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         ]
         | None = None,
         acquisition_state: StateType | None = None,
+        callback: Callable | None = None,
         *,
         track_state: bool = True,
         fit_initial_model: bool = True,
@@ -390,6 +391,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         :param acquisition_state: The acquisition state to use on the first optimization step.
             This argument allows the caller to restore the optimization process from an existing
             :class:`Record`.
+        :param callback: A user defined callback function, takes (model, Dataset, acquisition_state)
+            as input. Must be used with track_state = True.
         :param track_state: If `True`, this method saves the optimization state at the start of each
             step. Models and acquisition state are copied using `copy.deepcopy`.
         :param fit_initial_model: If `False`, this method assumes that the initial models have
@@ -500,6 +503,13 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                                 np.min(tagged_output[tag].observations),
                                 step=step,
                             )
+                if callback:
+                    assert track_state is True
+                    callback_signal = callback(history[-1])
+                    if callback_signal == -1:
+                        tf.print("Optimization stopped as receiving signal from callback function",
+                                 output_stream=logging.INFO)
+                        break
 
             except Exception as error:  # pylint: disable=broad-except
                 tf.print(

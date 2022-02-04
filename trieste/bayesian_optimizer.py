@@ -183,7 +183,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         model_specs: Mapping[str, ModelSpec],
         *,
         track_state: bool = True,
-        callback: Callable | None = None,
+        callback: Callable[[Record[StateType]], int | None] | None = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[None]:
         ...
@@ -199,7 +199,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         ],
         *,
         track_state: bool = True,
-        callback: Callable | None = None,
+        callback: Callable[[Record[StateType]], int | None] | None = None,
         fit_initial_model: bool = True,
         # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
         # checker can't differentiate between TensorType and State[S | None, TensorType], and
@@ -219,7 +219,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         ],
         *,
         track_state: bool = True,
-        callback: Callable | None = None,
+        callback: Callable[[Record[StateType]], int | None] | None = None,
         fit_initial_model: bool = True,
         # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
         # checker can't differentiate between TensorType and State[S | None, TensorType], and
@@ -239,7 +239,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
-        callback: Callable | None = None,
+        callback: Callable[[Record[StateType]], int | None] | None = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType]:
         ...
@@ -257,7 +257,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
-        callback: Callable | None = None,
+        callback: Callable[[Record[StateType]], int | None] | None = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType]:
         ...
@@ -270,7 +270,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         model_specs: ModelSpec,
         *,
         track_state: bool = True,
-        callback: Callable | None = None,
+        callback: Callable[[Record[StateType]], int | None] | None = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[None]:
         ...
@@ -286,7 +286,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         ],
         *,
         track_state: bool = True,
-        callback: Callable | None = None,
+        callback: Callable[[Record[StateType]], int | None] | None = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[object]:
         ...
@@ -302,7 +302,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         ],
         *,
         track_state: bool = True,
-        callback: Callable | None = None,
+        callback: Callable[[Record[StateType]], int | None] | None = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[object]:
         ...
@@ -319,7 +319,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
-        callback: Callable | None = None,
+        callback: Callable[[Record[StateType]], int | None] | None = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType]:
         ...
@@ -336,7 +336,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
-        callback: Callable | None = None,
+        callback: Callable[[Record[StateType]], int | None] | None = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType]:
         ...
@@ -358,7 +358,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
-        callback: Callable | None = None,
+        callback: Callable[[Record[StateType]], int | None] | None = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType] | OptimizationResult[None]:
         """
@@ -401,10 +401,10 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         :param acquisition_state: The acquisition state to use on the first optimization step.
             This argument allows the caller to restore the optimization process from an existing
             :class:`Record`.
-        :param callback: A user defined callback function, takes `Record(datasets,
-            models, acquisition_state)` as input. Must be used with `track_state = True`.
         :param track_state: If `True`, this method saves the optimization state at the start of each
             step. Models and acquisition state are copied using `copy.deepcopy`.
+        :param callback: A user defined callback function, takes `Record(datasets,
+            models, acquisition_state)` as input. Must be used with `track_state = True`.
         :param fit_initial_model: If `False`, this method assumes that the initial models have
             already been optimized on the datasets and so do not require optimization before the
             first optimization step.

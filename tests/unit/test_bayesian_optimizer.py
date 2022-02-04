@@ -34,7 +34,7 @@ from tests.util.models.gpflow.models import (
     rbf,
 )
 from trieste.acquisition.rule import AcquisitionRule
-from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult, Record
+from trieste.bayesian_optimizer import BayesianOptimizer, OptimizationResult, Record, StateType
 from trieste.data import Dataset
 from trieste.models import ProbabilisticModel, TrainableProbabilisticModel
 from trieste.observer import OBJECTIVE, Observer
@@ -491,13 +491,15 @@ def test_bayesian_optimizer_optimize_tracked_state() -> None:
         npt.assert_allclose(variance_from_saved_model, 1.0 / (step + 1))
 
 
-def callback_func(record: Record):
+def callback_func(record: Record[StateType]) -> Optional[int]:
     if len(record.datasets[OBJECTIVE].observations) == 2 + 1:  # with 1 initial sample
         return -1
+    else:
+        return None
 
 
 class CallbackClass:
-    def __call__(self, record: Record):
+    def __call__(self, record: Record[StateType]) -> Optional[int]:
         if (
             tf.reduce_max(
                 record.models[OBJECTIVE].predict(record.datasets[OBJECTIVE].query_points)[-1]
@@ -505,6 +507,8 @@ class CallbackClass:
             < 0.2
         ):  # 5 iter
             return -1
+        else:
+            return None
 
 
 def test_bayesian_optimizer_callback_must_enable_track_state() -> None:
@@ -526,7 +530,7 @@ def test_bayesian_optimizer_callback_must_enable_track_state() -> None:
     [(callback_func, 2, 10), (CallbackClass(), 5, 20)],
 )
 def test_bayesian_optimizer_callback_can_stop_bo_loop(
-    callback: Callable, expected_stop_num: int, preset_num_step: int
+    callback: Callable[[Record[StateType]], Optional[int]], expected_stop_num: int, preset_num_step: int
 ) -> None:
     data, models = {OBJECTIVE: mk_dataset([[0.5]], [[0.25]])}, {
         OBJECTIVE: DecreasingVarianceModel(mk_dataset([[0.5]], [[0.25]]))

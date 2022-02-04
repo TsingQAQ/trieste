@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import NoReturn, Optional
+from typing import Callable, NoReturn, Optional
 
 import numpy.testing as npt
 import pytest
@@ -433,40 +433,43 @@ def test_bayesian_optimizer_optimize_doesnt_track_state_if_told_not_to() -> None
     assert len(history) == 0
 
 
+class DecreasingVarianceModel(QuadraticMeanAndRBFKernel, TrainableProbabilisticModel):
+    def __init__(self, data: Dataset):
+        super().__init__()
+        self._data = data
+
+    def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
+        mean, var = super().predict(query_points)
+        return mean, var / len(self._data)
+
+    def update(self, dataset: Dataset) -> None:
+        self._data = dataset
+
+    def optimize(self, dataset: Dataset) -> None:
+        pass
+
+
+class CountingRule(AcquisitionRule[State[Optional[int], TensorType], Box, ProbabilisticModel]):
+    def acquire(
+        self,
+        search_space: Box,
+        models: Mapping[str, ProbabilisticModel],
+        datasets: Optional[Mapping[str, Dataset]] = None,
+    ) -> State[int | None, TensorType]:
+        def go(state: int | None) -> tuple[int | None, TensorType]:
+            new_state = 0 if state is None else state + 1
+            return new_state, tf.constant([[10.0]], tf.float64) + new_state
+
+        return go
+
+
 def test_bayesian_optimizer_optimize_tracked_state() -> None:
-    class _CountingRule(AcquisitionRule[State[Optional[int], TensorType], Box, ProbabilisticModel]):
-        def acquire(
-            self,
-            search_space: Box,
-            models: Mapping[str, ProbabilisticModel],
-            datasets: Optional[Mapping[str, Dataset]] = None,
-        ) -> State[int | None, TensorType]:
-            def go(state: int | None) -> tuple[int | None, TensorType]:
-                new_state = 0 if state is None else state + 1
-                return new_state, tf.constant([[10.0]], tf.float64) + new_state
-
-            return go
-
-    class _DecreasingVarianceModel(QuadraticMeanAndRBFKernel, TrainableProbabilisticModel):
-        def __init__(self, data: Dataset):
-            super().__init__()
-            self._data = data
-
-        def predict(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
-            mean, var = super().predict(query_points)
-            return mean, var / len(self._data)
-
-        def update(self, dataset: Dataset) -> None:
-            self._data = dataset
-
-        def optimize(self, dataset: Dataset) -> None:
-            pass
 
     initial_data = mk_dataset([[0.0]], [[0.0]])
-    model = _DecreasingVarianceModel(initial_data)
+    model = DecreasingVarianceModel(initial_data)
     _, history = (
         BayesianOptimizer(_quadratic_observer, Box([0], [1]))
-        .optimize(3, {"": initial_data}, {"": model}, _CountingRule())
+        .optimize(3, {"": initial_data}, {"": model}, CountingRule())
         .astuple()
     )
 
@@ -486,3 +489,69 @@ def test_bayesian_optimizer_optimize_tracked_state() -> None:
             history[step].models[""].predict(tf.constant([[0.0]], tf.float64))
         )
         npt.assert_allclose(variance_from_saved_model, 1.0 / (step + 1))
+
+
+def callback_func(
+    model: Mapping[str, ProbabilisticModel],
+    dataset: Mapping[str, Dataset],
+    acquisition_function_state,
+):
+    if len(dataset[OBJECTIVE].observations) == 2 + 1:  # with 1 initial sample
+        return -1
+
+
+class CallbackClass:
+    def __call__(
+        self,
+        model: Mapping[str, ProbabilisticModel],
+        dataset: Mapping[str, Dataset],
+        acquisition_function_state,
+    ):
+        if (
+            tf.reduce_max(model[OBJECTIVE].predict(dataset[OBJECTIVE].query_points)[-1]) < 0.2
+        ):  # 5 iter
+            return -1
+
+
+def test_bayesian_optimizer_callback_must_enable_track_state() -> None:
+    data, models = {OBJECTIVE: mk_dataset([[0.5]], [[0.25]])}, {
+        OBJECTIVE: _PseudoTrainableQuadratic()
+    }
+
+    def _tagged_quadratic_observer(x: tf.Tensor) -> Mapping[str, Dataset]:
+        return {OBJECTIVE: Dataset(x, quadratic(x))}
+
+    with pytest.raises(AssertionError, match="track_state must be True when use callback."):
+        BayesianOptimizer(_tagged_quadratic_observer, Box([-1], [1])).optimize(
+            5, data, models, track_state=False, callback=callback_func
+        ).final_result.unwrap()
+
+
+@pytest.mark.parametrize(
+    "callback, expected_stop_num, preset_num_step",
+    [(callback_func, 2, 10), (CallbackClass(), 5, 20)],
+)
+def test_bayesian_optimizer_callback_can_stop_bo_loop(
+    callback: Callable, expected_stop_num: int, preset_num_step: int
+) -> None:
+    data, models = {OBJECTIVE: mk_dataset([[0.5]], [[0.25]])}, {
+        OBJECTIVE: DecreasingVarianceModel(mk_dataset([[0.5]], [[0.25]]))
+    }
+
+    def _tagged_quadratic_observer(x: tf.Tensor) -> Mapping[str, Dataset]:
+        return {OBJECTIVE: Dataset(x, quadratic(x))}
+
+    _, history = (
+        BayesianOptimizer(_tagged_quadratic_observer, Box([-1], [1]))
+        .optimize(
+            preset_num_step,
+            data,
+            models,
+            acquisition_rule=CountingRule(),
+            track_state=True,
+            callback=callback,
+        )
+        .astuple()
+    )
+
+    assert history[-1].acquisition_state == expected_stop_num - 1

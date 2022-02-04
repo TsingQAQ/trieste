@@ -22,7 +22,7 @@ import copy
 import traceback
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Dict, Generic, TypeVar, cast, overload, Callable
+from typing import Callable, Dict, Generic, TypeVar, cast, overload
 
 import numpy as np
 import tensorflow as tf
@@ -183,6 +183,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         model_specs: Mapping[str, ModelSpec],
         *,
         track_state: bool = True,
+        callback: Callable | None = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[None]:
         ...
@@ -198,6 +199,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         ],
         *,
         track_state: bool = True,
+        callback: Callable | None = None,
         fit_initial_model: bool = True,
         # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
         # checker can't differentiate between TensorType and State[S | None, TensorType], and
@@ -217,6 +219,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         ],
         *,
         track_state: bool = True,
+        callback: Callable | None = None,
         fit_initial_model: bool = True,
         # this should really be OptimizationResult[None], but tf.Tensor is untyped so the type
         # checker can't differentiate between TensorType and State[S | None, TensorType], and
@@ -236,6 +239,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
+        callback: Callable | None = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType]:
         ...
@@ -253,6 +257,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
+        callback: Callable | None = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType]:
         ...
@@ -265,6 +270,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         model_specs: ModelSpec,
         *,
         track_state: bool = True,
+        callback: Callable | None = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[None]:
         ...
@@ -280,6 +286,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         ],
         *,
         track_state: bool = True,
+        callback: Callable | None = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[object]:
         ...
@@ -295,6 +302,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         ],
         *,
         track_state: bool = True,
+        callback: Callable | None = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[object]:
         ...
@@ -311,6 +319,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
+        callback: Callable | None = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType]:
         ...
@@ -327,6 +336,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         acquisition_state: StateType | None = None,
         *,
         track_state: bool = True,
+        callback: Callable | None = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType]:
         ...
@@ -346,9 +356,9 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         ]
         | None = None,
         acquisition_state: StateType | None = None,
-        callback: Callable | None = None,
         *,
         track_state: bool = True,
+        callback: Callable | None = None,
         fit_initial_model: bool = True,
     ) -> OptimizationResult[StateType] | OptimizationResult[None]:
         """
@@ -463,6 +473,19 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                         model.update(dataset)
                         model.optimize(dataset)
 
+                if callback:
+                    assert track_state, ValueError("track_state must be True when use callback.")
+                    callback_signal = callback(
+                        history[-1].models, history[-1].datasets, history[-1].acquisition_state
+                    )
+                    if callback_signal == -1:
+                        tf.print(
+                            f"Optimization stopped at iter: {step} as "
+                            f"receiving signal from callback function",
+                            output_stream=logging.INFO,
+                        )
+                        break
+
                 points_or_stateful = acquisition_rule.acquire(
                     self._search_space, models, datasets=datasets
                 )
@@ -503,13 +526,6 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                                 np.min(tagged_output[tag].observations),
                                 step=step,
                             )
-                if callback:
-                    assert track_state is True
-                    callback_signal = callback(history[-1])
-                    if callback_signal == -1:
-                        tf.print("Optimization stopped as receiving signal from callback function",
-                                 output_stream=logging.INFO)
-                        break
 
             except Exception as error:  # pylint: disable=broad-except
                 tf.print(

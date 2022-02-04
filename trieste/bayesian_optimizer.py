@@ -401,8 +401,8 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
         :param acquisition_state: The acquisition state to use on the first optimization step.
             This argument allows the caller to restore the optimization process from an existing
             :class:`Record`.
-        :param callback: A user defined callback function, takes (model, Dataset, acquisition_state)
-            as input. Must be used with track_state = True.
+        :param callback: A user defined callback function, takes `Record(datasets,
+            models, acquisition_state)` as input. Must be used with `track_state = True`.
         :param track_state: If `True`, this method saves the optimization state at the start of each
             step. Models and acquisition state are copied using `copy.deepcopy`.
         :param fit_initial_model: If `False`, this method assumes that the initial models have
@@ -475,9 +475,7 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
 
                 if callback:
                     assert track_state, ValueError("track_state must be True when use callback.")
-                    callback_signal = callback(
-                        history[-1].models, history[-1].datasets, history[-1].acquisition_state
-                    )
+                    callback_signal = callback(history[-1])
                     if callback_signal == -1:
                         tf.print(
                             f"Optimization stopped at iter: {step} as "

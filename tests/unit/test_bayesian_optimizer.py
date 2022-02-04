@@ -491,24 +491,18 @@ def test_bayesian_optimizer_optimize_tracked_state() -> None:
         npt.assert_allclose(variance_from_saved_model, 1.0 / (step + 1))
 
 
-def callback_func(
-    model: Mapping[str, ProbabilisticModel],
-    dataset: Mapping[str, Dataset],
-    acquisition_function_state,
-):
-    if len(dataset[OBJECTIVE].observations) == 2 + 1:  # with 1 initial sample
+def callback_func(record: Record):
+    if len(record.datasets[OBJECTIVE].observations) == 2 + 1:  # with 1 initial sample
         return -1
 
 
 class CallbackClass:
-    def __call__(
-        self,
-        model: Mapping[str, ProbabilisticModel],
-        dataset: Mapping[str, Dataset],
-        acquisition_function_state,
-    ):
+    def __call__(self, record: Record):
         if (
-            tf.reduce_max(model[OBJECTIVE].predict(dataset[OBJECTIVE].query_points)[-1]) < 0.2
+            tf.reduce_max(
+                record.models[OBJECTIVE].predict(record.datasets[OBJECTIVE].query_points)[-1]
+            )
+            < 0.2
         ):  # 5 iter
             return -1
 

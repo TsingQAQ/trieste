@@ -469,14 +469,6 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                     acquisition_state_copy = copy.deepcopy(acquisition_state)
                     history.append(Record(datasets, models_copy, acquisition_state_copy))
 
-                with Timer() as total_step_wallclock_timer:
-                    if step == 0 and fit_initial_model:
-                        with Timer() as initial_model_fitting_timer:
-                            for tag, model in models.items():
-                                dataset = datasets[tag]
-                                model.update(dataset)
-                                model.optimize(dataset)
-
                 if callback:
                     assert track_state, ValueError("track_state must be True when use callback.")
                     callback_signal = callback(history[-1])
@@ -487,6 +479,14 @@ class BayesianOptimizer(Generic[SearchSpaceType]):
                             output_stream=logging.INFO,
                         )
                         break
+
+                with Timer() as total_step_wallclock_timer:
+                    if step == 0 and fit_initial_model:
+                        with Timer() as initial_model_fitting_timer:
+                            for tag, model in models.items():
+                                dataset = datasets[tag]
+                                model.update(dataset)
+                                model.optimize(dataset)
 
                     with Timer() as query_point_generation_timer:
                         points_or_stateful = acquisition_rule.acquire(

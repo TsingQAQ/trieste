@@ -25,6 +25,7 @@ from trieste.acquisition.multi_objective.partition import (
     ExactPartition2dNonDominated,
     HypervolumeBoxDecompositionIncrementalDominated,
     prepare_default_non_dominated_partition_bounds,
+    FlipTrickPartitionNonDominated
 )
 
 
@@ -670,3 +671,210 @@ def test_hbda_raise_when_update_has_elements_lower_than_anti_reference(
             observations, reference, dummy_anti_ref_value
         )
         partition.update(new_observations)
+
+
+@pytest.mark.parametrize(
+    "reference",
+    [0.0, [0.0], [[0.0]]],
+)
+def test_flip_trick_non_dominated_partition_raise_for_reference_with_invalid_shape(
+    reference: SequenceN[float],
+) -> None:
+    objectives = tf.constant(
+        [
+            [0.0, 2.0, 1.0],
+            [7.0, 6.0, 0.0],
+            [9.0, 0.0, 1.0],
+            [0.0, 0.0, 0.0],
+        ]
+    )
+    with pytest.raises(TF_DEBUGGING_ERROR_TYPES):
+        FlipTrickPartitionNonDominated(
+            objectives, tf.constant(reference) - 10, tf.constant(reference)
+        )
+
+
+@pytest.mark.parametrize("reference", [[0.5, 0.65, 4], [11.0, 4.0, 2.0], [11.0, 11.0, 0.0]])
+def test_flip_trick_non_dominated_partition_raises_for_reference_below_anti_ideal_point(
+    reference: list[float],
+) -> None:
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        FlipTrickPartitionNonDominated(
+            tf.constant(
+                [
+                    [0.0, 2.0, 1.0],
+                    [7.0, 6.0, 0.0],
+                    [9.0, 0.0, 1.0],
+                ]
+            ),
+            tf.constant([-10.0, -10.0, -10.0]),
+            tf.constant(reference),
+        ).partition_bounds()
+
+
+@pytest.mark.parametrize(
+    "anti_reference", [[1.0, -2.0, -2.0], [-1.0, 3.0, -2.0], [-1.0, -3.0, 1.0]]
+)
+def test_flip_trick_non_dominated_partition_raises_for_front_below_anti_reference_point(
+    anti_reference: list[float],
+) -> None:
+    with pytest.raises(tf.errors.InvalidArgumentError):
+        FlipTrickPartitionNonDominated(
+            tf.constant(
+                [
+                    [0.0, 2.0, 1.0],
+                    [7.0, 6.0, 0.0],
+                    [9.0, 0.0, 1.0],
+                ]
+            ),
+            tf.constant(anti_reference),
+            tf.constant([10.0, 10.0, 10.0]),
+        ).partition_bounds()
+
+
+@pytest.mark.parametrize(
+    "observations, anti_reference, reference, expected_lb, expected_ub",
+    [
+        pytest.param(
+            tf.constant([[2.0, 2.0]]),
+            tf.constant([-20.0, -20.0]),
+            tf.constant([15.0, 15.0]),
+            tf.constant([[-20.0, -20.0], [-20.0, 2.0]]),
+            tf.constant([[15.0, 2.0], [2.0, 15.0]]),
+            id="FlipTrickPartitionNonDominated_2d_only1points",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0], [5.0, 5.0]]),
+            tf.constant([-10.0, -10.0]),
+            tf.constant([15.0, 15.0]),
+            tf.constant([[-10.0, -10.0], [-10.0, 2.0]]),
+            tf.constant([[15.0, 2.0], [2.0, 15.0]]),
+            id="FlipTrickPartitionNonDominated_2d_only1_pf_points",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0], [5.0, 5.0], [1.0, 10.0], [10.0, 1.0]]),
+            tf.constant([-10.0, -10.0]),
+            tf.constant([10.0, 10.0]),
+            tf.constant([[-10.0, -10.0], [-10.0, 2.0]]),
+            tf.constant([[10.0, 2.0], [2.0, 10.0]]),
+            id="FlipTrickPartitionNonDominated_2d_pf_point_has_1d_same_as_reference",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0], [1.0, 3.0], [5.0, 10.0]]),
+            tf.constant([-10.0, -10.0]),
+            tf.constant([10.0, 10.0]),
+            tf.constant([[-10.0, -10.0], [-10.0, 2.0], [-10.0, 3.0]]),
+            tf.constant([[10.0, 2.0], [2.0, 3.0], [1.0, 10.0]]),
+            id="FlipTrickPartitionNonDominated_2d_pf_common_case",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0]]),
+            tf.constant([2.0, 2.0]),
+            tf.constant([4.0, 4.0]),
+            tf.zeros(shape=(0, 2)),
+            tf.zeros(shape=(0, 2)),
+            id="FlipTrickPartitionNonDominated_2d_pf_point_same_as_antireference",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0, 2.0]]),
+            tf.constant([-10.0, -10.0, -10.0]),
+            tf.constant([10.0, 10.0, 10.0]),
+            tf.constant([[-10.0, -10.0, -10.0], [-10.0, 2.0, -10.0], [-10.0, 2.0, 2.0]]),
+            tf.constant([[10.0, 2.0, 10.0], [10.0, 10.0, 2.0], [2.0, 10.0, 10.0]]),
+            id="FlipTrickPartitionNonDominated_3d_only1points",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0, 2.0], [3.0, 3.0, 3.0]]),
+            tf.constant([-10.0, -10.0, -10.0]),
+            tf.constant([10.0, 10.0, 10.0]),
+            tf.constant([[-10.0, -10.0, -10.0], [-10.0, 2.0, -10.0], [-10.0, 2.0, 2.0]]),
+            tf.constant([[10.0, 2.0, 10.0], [10.0, 10.0, 2.0], [2.0, 10.0, 10.0]]),
+            id="FlipTrickPartitionNonDominated_3d_only1PFpoints",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0, 2.0], [1.0, 5.0, 10.0], [10.0, 1.0, 5.0], [1.0, 10.0, 1.0]]),
+            tf.constant([-10.0, -10.0, -10.0]),
+            tf.constant([10.0, 10.0, 10.0]),
+            tf.constant([[-10.0, -10.0, -10.0], [-10.0, 2.0, -10.0], [-10.0, 2.0, 2.0]]),
+            tf.constant([[10.0, 2.0, 10.0], [10.0, 10.0, 2.0], [2.0, 10.0, 10.0]]),
+            id="FlipTrickPartitionNonDominated_3d_pf_point_has_1d_same_as_reference",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0, 2.0], [1.0, 10.0, 10.0], [10.0, 1.0, 10.0], [10.0, 10.0, 1.0]]),
+            tf.constant([-10.0, -10.0, -10.0]),
+            tf.constant([10.0, 10.0, 10.0]),
+            tf.constant([[-10.0, -10.0, -10.0], [-10.0, 2.0, -10.0], [-10.0, 2.0, 2.0]]),
+            tf.constant([[10.0, 2.0, 10.0], [10.0, 10.0, 2.0], [2.0, 10.0, 10.0]]),
+            id="FlipTrickPartitionNonDominated_3d_pf_point_has_2d_same_as_reference",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0, 2.0]]),
+            tf.constant([2.0, 2.0, 2.0]),
+            tf.constant([10.0, 10.0, 10.0]),
+            tf.zeros(shape=(0, 3)),
+            tf.zeros(shape=(0, 3)),
+            id="FlipTrickPartitionNonDominated_3d_pf_point_same_as_reference",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0, 2.0], [4.0, 4.0, 4.0], [1.0, 3.0, 5.0]]),
+            tf.constant([-10.0, -10.0, -10.0]),
+            tf.constant([10.0, 10.0, 10.0]),
+            tf.constant(
+                [
+                    [-10.0, -10.0, -10.0],
+                    [-10.0, 2.0, -10.0],
+                    [-10.0, 2.0, 2.0],
+                    [-10.0, 3.0, 2.0],
+                    [-10.0, 3.0, 5.0],
+                ]
+            ),
+            tf.constant(
+                [
+                    [10.0, 2.0, 10.0],
+                    [10.0, 10.0, 2.0],
+                    [2.0, 3.0, 10.0],
+                    [2.0, 10.0, 5.0],
+                    [1.0, 10.0, 10.0],
+                ]
+            ),
+            id="FlipTrickPartitionNonDominated_3d_pf_common_case",
+        ),
+        pytest.param(
+            tf.constant([[2.0, 2.0, 2.0], [4.0, 4.0, 4.0], [2.0, 3.0, 1.0], [3.5, 2.0, 1.0]]),
+            tf.constant([-10.0, -10.0, -10.0]),
+            tf.constant([10.0, 10.0, 10.0]),
+            tf.constant(
+                [
+                    [-10.0, -10.0, -10.0],
+                    [-10.0, 2.0, -10.0],
+                    [-10.0, 2.0, 1.0],
+                    [-10.0, 3.0, 1.0],
+                    [-10.0, 2.0, 2.0],
+                ]
+            ),
+            tf.constant(
+                [
+                    [10.0, 2.0, 10.0],
+                    [10.0, 10.0, 1.0],
+                    [3.5, 3.0, 2.0],
+                    [2.0, 10.0, 2.0],
+                    [2.0, 10.0, 10.0],
+                ]
+            ),
+            id="HypervolumeBoxDecompositionIncrementalDominated_3d_pf_have_same_at_1d_case",
+        ),
+    ],
+)
+def test_flip_trick_non_dominated_partition(
+    observations: tf.Tensor,
+    anti_reference: tf.Tensor,
+    reference: tf.Tensor,
+    expected_lb: tf.Tensor,
+    expected_ub: tf.Tensor,
+):
+    lb, ub = FlipTrickPartitionNonDominated(
+        observations, anti_reference, reference
+    ).partition_bounds()
+
+    npt.assert_allclose(lb, expected_lb)
+    npt.assert_allclose(ub, expected_ub)

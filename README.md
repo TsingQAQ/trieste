@@ -1,37 +1,48 @@
-# Trieste
-
-A Bayesian optimization toolbox built on [TensorFlow](https://www.tensorflow.org/). Trieste supports Python 3.7 onwards and uses [semantic versioning](https://semver.org/).
-
-We welcome contributions. See [the guidelines](CONTRIBUTING.md) to get started.
+# \{PF\}$^2$ES: A New Acquisition Function for Parallel Feasible Pareto Frontier Entropy Search
+![](PF2ES_VLMOP2.gif)
 
 ### Installation
+:exclamation::exclamation::exclamation:Caution: You are away from [the main branch of Trieste](https://github.com/secondmind-labs/trieste), this branch contains certain other functionalities  
 
-To install trieste, run
+install from sources, run
 ```bash
-$ pip install trieste
+$ pip install -e.
 ```
-or to install from sources, run
-```bash
-$ pip install .
+in the repository root (tested with Python version 3.7.11).
+
+### Tutorial/Demonstration Notebook
+There is a standalone tutorial notebook `multi_objective_entropy_search_via_PF2ES.py` at ([`\docs\notebooks`](https://github.com/TsingQAQ/trieste/blob/PF2ES_preview_notebook/docs/notebooks/multi_objective_entropy_search_pf2es.pct.py)) demonstrating 
+how to make use of the acquisition function for different multi-objective optimization tasks.
+ 
+  
+  In order to run the notebook, install the following dependency:     
+  ``` 
+  $ pip install -r notebooks/requirements.txt
+  ```  
+
+  Then, run the notebooks with  
+   ```
+  $ jupyter-notebook notebooks
+  ```
+  --------------
+
+### Other info
+- [ ] (Comming Soon) The repo capable of running all the experiments.
+- For other information-theoretic acquisitions utilized in experimental comparison, please refer their branch:
+  - PESMO: https://github.com/HIPS/Spearmint/tree/PESM
+  - MESMOC+: https://github.com/fernandezdaniel/Spearmint
+  - PPESMOC: https://github.com/EduardoGarrido90/spearmint_ppesmoc
+- There is also a backup repo powered by [UGENT SUMO lab](https://sumo.intec.ugent.be/) at [here](https://gitlab.ilabt.imec.be/sumolab/trieste/-/tree/PF2ES_preview_notebook).  
+
+### Citation
+If you find this work or repository helpful, please kindly consider citing our work:
 ```
-in the repository root.
-
-### Documentation
-
-Trieste has a [documentation site](https://secondmind-labs.github.io/trieste) with tutorials on how to use the library, and an API reference. You can also run the tutorials interactively. They can be found in the notebooks directory, and are written as Python scripts for running with Jupytext. To run them, first install trieste from sources as above, then install additional dependencies with
-```bash
-$ pip install -r notebooks/requirements.txt
-```
-Finally, run the notebooks with
-```bash
-$ jupyter-notebook notebooks
+@article{qing2022pf2es,
+  title={PF2ES: Parallel feasible Pareto frontier entropy search for multi-objective Bayesian optimization under unknown constraints},
+  author={Qing, Jixiang and Moss, Henry B and Dhaene, Tom and Couckuyt, Ivo},
+  journal={ArXiv, abs/2204.05411},
+  year={2022}
+}
 ```
 
-### Getting help
-
-- To submit a pull request, file a bug report, or make a feature request, see the [contribution guidelines](CONTRIBUTING.md).
-- For more open-ended questions, or for anything else, join the discussions on Trieste channels in Secondmind Labs' community [Slack workspace](https://join.slack.com/t/secondmind-labs/shared_invite/zt-ph07nuie-gMlkle__tjvXBay4FNSLkw).
-
-# License
-
-[Apache License 2.0](LICENSE)
+  

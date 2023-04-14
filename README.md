@@ -37,11 +37,20 @@ how to make use of the acquisition function for different multi-objective optimi
 ### Citation
 If you find this work or repository helpful, please kindly consider citing our work:
 ```
-@article{qing2022pf2es,
-  title={PF2ES: Parallel feasible Pareto frontier entropy search for multi-objective Bayesian optimization under unknown constraints},
-  author={Qing, Jixiang and Moss, Henry B and Dhaene, Tom and Couckuyt, Ivo},
-  journal={ArXiv, abs/2204.05411},
-  year={2022}
+@InProceedings{pmlr-v206-qing23a,
+  title = 	 {\{PF\}$^2$ES: Parallel Feasible Pareto Frontier Entropy Search for Multi-Objective Bayesian Optimization},
+  author =       {Qing, Jixiang and Moss, Henry B. and Dhaene, Tom and Couckuyt, Ivo},
+  booktitle = 	 {Proceedings of The 26th International Conference on Artificial Intelligence and Statistics},
+  pages = 	 {2565--2588},
+  year = 	 {2023},
+  editor = 	 {Ruiz, Francisco and Dy, Jennifer and van de Meent, Jan-Willem},
+  volume = 	 {206},
+  series = 	 {Proceedings of Machine Learning Research},
+  month = 	 {25--27 Apr},
+  publisher =    {PMLR},
+  pdf = 	 {https://proceedings.mlr.press/v206/qing23a/qing23a.pdf},
+  url = 	 {https://proceedings.mlr.press/v206/qing23a.html},
+  abstract = 	 {We present Parallel Feasible Pareto Frontier Entropy Search ($\{\mathrm{PF}\}^2$ES) — a novel information-theoretic acquisition function for multi-objective Bayesian optimization supporting unknown constraints and batch queries. Due to the complexity of characterizing the mutual information between candidate evaluations and (feasible) Pareto frontiers, existing approaches must either employ crude approximations that significantly hamper their performance or rely on expensive inference schemes that substantially increase the optimization’s computational overhead. By instead using a variational lower bound, $\{\mathrm{PF}\}^2$ES provides a low-cost and accurate estimate of the mutual information. We benchmark $\{\mathrm{PF}\}^2$ES against other information-theoretic acquisition functions, demonstrating its competitive performance for optimization across synthetic and real-world design problems.}
 }
 ```
 

@@ -1,5 +1,6 @@
-# \{PF\}$^2$ES: A New Acquisition Function for Parallel Feasible Pareto Frontier Entropy Search
+# \{PF\} $^2$ ES: Parallel Feasible Pareto Frontier Entropy Search Acquisition Function for Multi-Objective Bayesian Optimization 
 ![](PF2ES_VLMOP2.gif)
+
 
 ### Installation
 :exclamation::exclamation::exclamation:Caution: You are away from [the main branch of Trieste](https://github.com/secondmind-labs/trieste), this branch contains certain other functionalities  
@@ -24,10 +25,15 @@ how to make use of the acquisition function for different multi-objective optimi
    ```
   $ jupyter-notebook notebooks
   ```
+  
+  #### How to run on your favorate problems 
+  - Define your own problem to optimize in `trieste/objectives/multi_objectives.py`
+  - Optimization as done in the tutorial notebook, then have fun!
+  
   --------------
 
 ### Other info
-- [ ] (Comming Soon) The repo capable of running all the experiments.
+- For **comparison** and **reproduciability**:  the repo capable of running all the experiments can be found [here](https://github.com/TsingQAQ/pf2es), note that all the experiments are conducted via `docs\exp\`
 - For other information-theoretic acquisitions utilized in experimental comparison, please refer their branch:
   - PESMO: https://github.com/HIPS/Spearmint/tree/PESM
   - MESMOC+: https://github.com/fernandezdaniel/Spearmint
